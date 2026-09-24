@@ -1,0 +1,8 @@
+[code]
+dir = "C:\\dev\\fixie"
+
+[claude]
+model="haiku"
+
+
+

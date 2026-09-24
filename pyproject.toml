@@ -1,0 +1,12 @@
+[project]
+name = "fixie"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "anthropic>=0.96.0",
+    "azure-devops>=7.1.0b4",
+    "dotenv>=0.9.9",
+    "git-python>=1.0.3",
+    "msrest>=0.7.1",
+    "python-dotenv>=1.2.2",
+]
