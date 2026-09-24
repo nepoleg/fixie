@@ -8,6 +8,7 @@ import json
 import re
 from datetime import datetime
 
+from fixie.allowlist import is_owner
 from fixie.model import BOT_SIGN, Comment, FixieStatus, RunStatus
 
 STATUS_HEADER = f"{BOT_SIGN} fixie status"
@@ -89,11 +90,32 @@ def format_status_comment(ticket_id: int, status: FixieStatus, secret: str) -> s
     return "\n".join(lines)
 
 
+def _plain(text: str) -> str:
+    return " ".join(html.unescape(re.sub(r"<[^>]*>", " ", text)).split())
+
+
+def _first_text_run(text: str) -> str:
+    for part in re.split(r"<[^>]*>", text):
+        run = " ".join(html.unescape(part).split())
+        if run:
+            return run
+    return ""
+
+
+def is_bot_signed(text: str) -> bool:
+    """Return whether text, once HTML-stripped, starts with the bot sign."""
+    return _plain(text).startswith(BOT_SIGN)
+
+
+def is_status_text(text: str) -> bool:
+    """Return whether text's first HTML text run is exactly the status header."""
+    return _first_text_run(text) == STATUS_HEADER
+
+
 def find_status_comment(comments: list[Comment], owner_email: str) -> Comment | None:
     """Return the oldest comment fixie itself created (its status comment), or None."""
-    owner_lower = owner_email.lower()
     for comment in comments:
-        if comment.text.startswith(STATUS_HEADER) and comment.created_by.unique_name.lower() == owner_lower:
+        if is_status_text(comment.text) and is_owner(comment.created_by, owner_email):
             return comment
     return None
 
@@ -102,7 +124,7 @@ def trusted_status(comment: Comment | None, ticket_id: int, owner_email: str, se
     """Return the comment's FixieStatus if its signature and editor are trusted, else None."""
     if comment is None:
         return None
-    if comment.modified_by.unique_name.lower() != owner_email.lower():
+    if not is_owner(comment.modified_by, owner_email):
         return None
     match = _STATE_RE.search(comment.text)
     if match is None:

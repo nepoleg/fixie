@@ -1,0 +1,365 @@
+{
+  "now": "2026-03-01T12:00:00Z",
+  "tickets": {
+    "201": {
+      "title": "Null email",
+      "work_item_type": "Bug",
+      "state": "Code Review",
+      "tags": ["fixie"],
+      "description": "<p>NPE on null email</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-03-01T11:00:00Z",
+      "updates": [
+        {
+          "id": 1,
+          "revised_by": {"display_name": "Bob", "unique_name": "bob@example.com"},
+          "revised_date": "2026-02-01T09:00:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": null,
+          "state_to": "New"
+        },
+        {
+          "id": 2,
+          "revised_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "revised_date": "2026-02-02T09:00:00Z",
+          "tags_added": ["fixie"],
+          "tags_removed": [],
+          "state_from": null,
+          "state_to": null
+        },
+        {
+          "id": 3,
+          "revised_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "revised_date": "2026-03-01T09:30:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": "New",
+          "state_to": "Developing"
+        },
+        {
+          "id": 4,
+          "revised_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "revised_date": "2026-03-01T10:10:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": "Developing",
+          "state_to": "Code Review"
+        },
+        {
+          "id": 5,
+          "revised_by": {"display_name": "Carol", "unique_name": "carol@example.com"},
+          "revised_date": "2026-03-01T10:21:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": "Code Review",
+          "state_to": "Resolved"
+        },
+        {
+          "id": 6,
+          "revised_by": {"display_name": "Carol", "unique_name": "carol@example.com"},
+          "revised_date": "2026-03-01T10:40:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": "Resolved",
+          "state_to": "Developing"
+        },
+        {
+          "id": 7,
+          "revised_by": {"display_name": "Carol", "unique_name": "carol@example.com"},
+          "revised_date": "2026-03-01T11:00:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": "Developing",
+          "state_to": "Code Review"
+        }
+      ],
+      "comments": [
+        {
+          "id": 2011,
+          "text": "<p>Please fix</p>",
+          "created_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "created_date": "2026-02-02T10:00:00Z",
+          "modified_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "modified_date": "2026-02-02T10:00:00Z"
+        },
+        {
+          "id": 2012,
+          "text": "<p>Too early</p>",
+          "created_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "created_date": "2026-03-01T09:59:00Z",
+          "modified_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "modified_date": "2026-03-01T09:59:00Z"
+        },
+        {
+          "id": 2013,
+          "text": "<p>Also handle null email</p>",
+          "created_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "created_date": "2026-03-01T10:05:00Z",
+          "modified_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "modified_date": "2026-03-01T10:05:00Z"
+        },
+        {
+          "id": 2014,
+          "text": "<p>🤖 PR 21 updated</p>",
+          "created_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "created_date": "2026-03-01T10:25:00Z",
+          "modified_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "modified_date": "2026-03-01T10:25:00Z"
+        },
+        {
+          "id": 2015,
+          "text": "<p>🤖 I am a bot too</p>",
+          "created_by": {"display_name": "Mallory", "unique_name": "mallory@example.com"},
+          "created_date": "2026-03-01T10:26:00Z",
+          "modified_by": {"display_name": "Mallory", "unique_name": "mallory@example.com"},
+          "modified_date": "2026-03-01T10:26:00Z"
+        },
+        {
+          "id": 2016,
+          "text": "<p>Owner note: use Optional</p>",
+          "created_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "created_date": "2026-03-01T10:30:00Z",
+          "modified_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "modified_date": "2026-03-01T10:30:00Z"
+        }
+      ]
+    },
+    "202": {
+      "title": "PR selection",
+      "work_item_type": "Bug",
+      "state": "Developing",
+      "tags": ["fixie"],
+      "description": "<p>Desc</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-03-01T11:00:00Z",
+      "updates": [],
+      "comments": []
+    },
+    "203": {
+      "title": "Edited comments",
+      "work_item_type": "Bug",
+      "state": "Developing",
+      "tags": ["fixie"],
+      "description": "<p>Desc</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-03-01T11:00:00Z",
+      "updates": [],
+      "comments": [
+        {
+          "id": 2031,
+          "text": "<p>🤖 status-like note</p>",
+          "created_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "created_date": "2026-03-01T10:00:00Z",
+          "modified_by": {"display_name": "Mallory", "unique_name": "mallory@example.com"},
+          "modified_date": "2026-03-01T10:05:00Z"
+        },
+        {
+          "id": 2032,
+          "text": "<p>Please review</p>",
+          "created_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "created_date": "2026-03-01T10:10:00Z",
+          "modified_by": {"display_name": "Bob", "unique_name": "bob@example.com"},
+          "modified_date": "2026-03-01T10:12:00Z"
+        }
+      ]
+    }
+  },
+  "pull_requests": {
+    "22": {
+      "title": "Active attempt",
+      "description": "",
+      "source_branch": "fixie/202",
+      "target_branch": "dev",
+      "status": "active",
+      "is_draft": false,
+      "work_item_ids": [202],
+      "created_date": "2026-02-20T09:00:00Z",
+      "threads": [],
+      "builds": []
+    },
+    "25": {
+      "title": "Abandoned retry",
+      "description": "",
+      "source_branch": "fixie/202",
+      "target_branch": "dev",
+      "status": "abandoned",
+      "is_draft": false,
+      "work_item_ids": [202],
+      "created_date": "2026-02-25T09:00:00Z",
+      "threads": [],
+      "builds": []
+    },
+    "20": {
+      "title": "Old attempt",
+      "description": "",
+      "source_branch": "fixie/201",
+      "target_branch": "dev",
+      "status": "abandoned",
+      "is_draft": false,
+      "work_item_ids": [201],
+      "created_date": "2026-02-05T10:00:00Z",
+      "threads": [],
+      "builds": []
+    },
+    "21": {
+      "title": "Null email",
+      "description": "",
+      "source_branch": "fixie/201",
+      "target_branch": "dev",
+      "status": "active",
+      "is_draft": false,
+      "work_item_ids": [201],
+      "created_date": "2026-02-20T09:00:00Z",
+      "threads": [
+        {
+          "id": 1,
+          "status": "active",
+          "file_path": null,
+          "line": null,
+          "published_date": "2026-02-20T10:00:00Z",
+          "last_updated_date": "2026-02-20T10:00:00Z",
+          "comments": [
+            {
+              "id": 1,
+              "author": {"display_name": "Alice", "unique_name": "alice@example.com"},
+              "content": "Old remark",
+              "published_date": "2026-02-20T10:00:00Z",
+              "last_updated_date": "2026-02-20T10:00:00Z",
+              "comment_type": "text"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "status": "active",
+          "file_path": "/src/A.java",
+          "line": 3,
+          "published_date": "2026-03-01T10:15:00Z",
+          "last_updated_date": "2026-03-01T10:15:00Z",
+          "comments": [
+            {
+              "id": 1,
+              "author": {"display_name": "Alice", "unique_name": "alice@example.com"},
+              "content": "Rename this",
+              "published_date": "2026-03-01T10:15:00Z",
+              "last_updated_date": "2026-03-01T10:15:00Z",
+              "comment_type": "text"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "status": "fixed",
+          "file_path": null,
+          "line": null,
+          "published_date": "2026-03-01T10:24:00Z",
+          "last_updated_date": "2026-03-01T10:24:00Z",
+          "comments": [
+            {
+              "id": 1,
+              "author": {"display_name": "Owner", "unique_name": "owner@example.com"},
+              "content": "🤖 Fixed in b0b0b01",
+              "published_date": "2026-03-01T10:24:00Z",
+              "last_updated_date": "2026-03-01T10:24:00Z",
+              "comment_type": "text"
+            },
+            {
+              "id": 2,
+              "author": {"display_name": "Alice", "unique_name": "alice@example.com"},
+              "content": "Still wrong",
+              "published_date": "2026-03-01T10:35:00Z",
+              "last_updated_date": "2026-03-01T10:35:00Z",
+              "comment_type": "text"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "status": null,
+          "file_path": null,
+          "line": null,
+          "published_date": "2026-03-01T10:22:00Z",
+          "last_updated_date": "2026-03-01T10:22:00Z",
+          "comments": [
+            {
+              "id": 1,
+              "author": {"display_name": "Owner", "unique_name": "owner@example.com"},
+              "content": "Owner pushed 1 commit",
+              "published_date": "2026-03-01T10:22:00Z",
+              "last_updated_date": "2026-03-01T10:22:00Z",
+              "comment_type": "system"
+            }
+          ]
+        }
+      ],
+      "builds": [
+        {
+          "id": 60,
+          "status": "completed",
+          "result": "failed",
+          "queue_time": "2026-03-01T09:40:00Z",
+          "finish_time": "2026-03-01T09:50:00Z",
+          "source_version": "b0b0aaa",
+          "requested_for": {"display_name": "Owner", "unique_name": "owner@example.com"}
+        },
+        {
+          "id": 61,
+          "status": "completed",
+          "result": "failed",
+          "queue_time": "2026-03-01T10:02:00Z",
+          "finish_time": "2026-03-01T10:12:00Z",
+          "source_version": "b0b0b00",
+          "requested_for": {"display_name": "Owner", "unique_name": "owner@example.com"}
+        },
+        {
+          "id": 62,
+          "status": "completed",
+          "result": "failed",
+          "queue_time": "2026-03-01T10:23:00Z",
+          "finish_time": "2026-03-01T10:28:00Z",
+          "source_version": "b0b0b01",
+          "requested_for": {"display_name": "Owner", "unique_name": "owner@example.com"}
+        },
+        {
+          "id": 63,
+          "status": "completed",
+          "result": "succeeded",
+          "queue_time": "2026-03-01T10:36:00Z",
+          "finish_time": "2026-03-01T10:45:00Z",
+          "source_version": "c0ffee2",
+          "requested_for": {"display_name": "Owner", "unique_name": "owner@example.com"}
+        },
+        {
+          "id": 64,
+          "status": "inProgress",
+          "result": null,
+          "queue_time": "2026-03-01T10:50:00Z",
+          "finish_time": null,
+          "source_version": "c0ffee2",
+          "requested_for": {"display_name": "Owner", "unique_name": "owner@example.com"}
+        },
+        {
+          "id": 65,
+          "status": "completed",
+          "result": "canceled",
+          "queue_time": "2026-03-01T10:41:00Z",
+          "finish_time": "2026-03-01T10:46:00Z",
+          "source_version": "c0ffee2",
+          "requested_for": {"display_name": "Owner", "unique_name": "owner@example.com"}
+        }
+      ]
+    }
+  },
+  "branches": {
+    "fixie/201": {
+      "sha": "c0ffee2",
+      "author": {"display_name": "Alice", "unique_name": "alice@example.com"},
+      "date": "2026-03-01T10:20:00Z",
+      "message": "Reviewer tweak"
+    }
+  }
+}

@@ -25,6 +25,7 @@ def test_loads_with_only_required_keys(tmp_path):
     assert settings.ticket_tag == "fixie"
     assert settings.default_base_branch == "dev"
     assert settings.ticket_timeout_s == 3600
+    assert settings.max_attempts == 3
     assert settings.allowlist == ()
     assert settings.azure_token is None
     assert settings.claude_oauth_token is None
@@ -104,6 +105,45 @@ def test_allowlist_and_owner_lowercased(tmp_path):
 
     assert settings.allowlist == ("alice@example.com",)
     assert settings.owner_email == "owner@example.com"
+
+
+def test_allowlist_blank_entries_dropped(tmp_path):
+    config_text = CONFIG_PATH.read_text(encoding="utf-8")
+    config_text = config_text.replace("allowlist = []", 'allowlist = ["", "  ", " Alice@Example.com "]')
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config_text, encoding="utf-8")
+
+    env_path = _write_env(tmp_path, ["FIXIE_STATE_SECRET=s", "FIXIE_OWNER_EMAIL=owner@example.com"])
+    settings = load_settings(config_path, env_path)
+
+    assert settings.allowlist == ("alice@example.com",)
+
+
+def test_max_attempts_default_and_config(tmp_path):
+    config_text = CONFIG_PATH.read_text(encoding="utf-8")
+    env_path = _write_env(tmp_path, ["FIXIE_STATE_SECRET=s", "FIXIE_OWNER_EMAIL=owner@example.com"])
+
+    no_section_text = config_text.replace("[orchestrator]\nmax_attempts = 3\n", "")
+    no_section_path = tmp_path / "no_section.toml"
+    no_section_path.write_text(no_section_text, encoding="utf-8")
+    assert load_settings(no_section_path, env_path).max_attempts == 3
+
+    custom_text = config_text.replace("max_attempts = 3", "max_attempts = 5")
+    custom_path = tmp_path / "custom.toml"
+    custom_path.write_text(custom_text, encoding="utf-8")
+    assert load_settings(custom_path, env_path).max_attempts == 5
+
+
+def test_max_attempts_below_one_rejected(tmp_path):
+    config_text = CONFIG_PATH.read_text(encoding="utf-8")
+    config_text = config_text.replace("max_attempts = 3", "max_attempts = 0")
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config_text, encoding="utf-8")
+
+    env_path = _write_env(tmp_path, ["FIXIE_STATE_SECRET=s", "FIXIE_OWNER_EMAIL=owner@example.com"])
+    with pytest.raises(SettingsError) as exc_info:
+        load_settings(config_path, env_path)
+    assert "max_attempts" in str(exc_info.value)
 
 
 def test_does_not_modify_os_environ(tmp_path, monkeypatch):

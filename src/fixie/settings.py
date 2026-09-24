@@ -26,6 +26,7 @@ class Settings:
     mirror_volume: str
     gradle_ro_volume: str
     ticket_timeout_s: int
+    max_attempts: int
     owner_email: str
     state_secret: str = field(repr=False)
     azure_token: str | None = field(repr=False)
@@ -58,18 +59,23 @@ def load_settings(config_path: Path, env_path: Path) -> Settings:
 
     ado = config["ado"]
     docker = config["docker"]
+    max_attempts = int(config.get("orchestrator", {}).get("max_attempts", 3))
+    if max_attempts < 1:
+        raise SettingsError(f"max_attempts must be at least 1, got {max_attempts}")
+
     return Settings(
         ado_org_url=ado["org_url"],
         ado_project=ado["project"],
         ado_repo=ado["repo"],
         ticket_tag=ado["ticket_tag"],
         default_base_branch=ado["default_base_branch"],
-        allowlist=tuple(a.lower() for a in ado["allowlist"]),
+        allowlist=tuple(a.strip().lower() for a in ado["allowlist"] if a.strip()),
         claude_model=config["claude"]["model"],
         docker_image=docker["image"],
         mirror_volume=docker["mirror_volume"],
         gradle_ro_volume=docker["gradle_ro_volume"],
         ticket_timeout_s=int(docker["ticket_timeout_s"]),
+        max_attempts=max_attempts,
         owner_email=owner_email.lower(),
         state_secret=state_secret,
         azure_token=_clean(env.get("AZURE_TOKEN")),

@@ -16,11 +16,11 @@ Comments to both pr and ticket are monitored till the ticket is closed. Ie if QA
 Integration with Azure is powered by Azure Devops Python lib. Only tickets labeld with a specific label will be eligible for execution.
 
 ### Who may trigger fixie
-- An allowlist of ADO user emails is kept in `config.toml`. Only tickets tagged by one of them are eligible.
+- An allowlist of ADO user emails is kept in `config.toml`. Only tickets tagged by one of them, or by the owner, are eligible.
 - The person who tagged a ticket is taken from the work item update history: the author of the latest update whose `System.Tags` change adds `fixie`. The check uses that update's `revised_by.unique_name` and ignores case.
 - A ticket tagged by anyone else is skipped. Fixie posts one comment explaining why and does not process the ticket.
 - If the tag is removed and re-added, the latest add decides.
-- If the allowlist is empty, only the owner (`FIXIE_OWNER_EMAIL`) may trigger fixie.
+- The owner (`FIXIE_OWNER_EMAIL`) may always trigger fixie, also when the allowlist is not empty. If the allowlist is empty, only the owner may.
 - The allowlist authorizes starting the work, not every later edit. Comments and description edits by non-allowlisted users are still passed to Claude, but marked with their author, so the risk is visible. Only allowlisted comments can be trusted as instructions.
 
 ## Claude integration

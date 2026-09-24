@@ -9,7 +9,14 @@ from pathlib import Path
 
 from fixie.fake_gateway import FakeGateway
 from fixie.model import Comment, FixieStatus, Identity, RunStatus
-from fixie.status_comment import STATUS_HEADER, find_status_comment, format_status_comment, trusted_status
+from fixie.status_comment import (
+    STATUS_HEADER,
+    find_status_comment,
+    format_status_comment,
+    is_bot_signed,
+    is_status_text,
+    trusted_status,
+)
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ado" / "contract.json"
 
@@ -186,6 +193,28 @@ def test_fake_gateway_add_and_edit_round_trip():
     found = find_status_comment(gw.get_comments(103), "owner@example.com")
     assert found.id == c.id
     assert trusted_status(found, 103, "owner@example.com", SECRET).attempts == 3
+
+
+def test_header_found_when_wrapped_in_html():
+    text = format_status_comment(101, FULL, SECRET)
+    wrapped = "<div>\n  <p>&nbsp;\U0001f916&nbsp;fixie\n status</p>" + text[len(STATUS_HEADER) :] + "</div>"
+    c = _comment(wrapped)
+    assert find_status_comment([c], "owner@example.com") == c
+    assert trusted_status(c, 101, "owner@example.com", SECRET) == FULL
+
+
+def test_is_bot_signed():
+    for text in ("\U0001f916 x", "<p>\U0001f916 x</p>", "  <div><p>\n\U0001f916 x</p></div>", "&nbsp;\U0001f916 x"):
+        assert is_bot_signed(text) is True
+    for text in ("<p>hello \U0001f916</p>", "", "<p></p>"):
+        assert is_bot_signed(text) is False
+    assert is_status_text("<p>\U0001f916 fixie status</p>") is True
+    assert is_status_text("<p>\U0001f916 PR created</p>") is False
+
+
+def test_is_status_text_not_a_prefix():
+    assert is_status_text("\U0001f916 fixie statusX") is False
+    assert is_status_text("\U0001f916 fixie status update") is False
 
 
 def test_contract_fixture_comment_12_untrusted():

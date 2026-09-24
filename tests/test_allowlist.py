@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from fixie.allowlist import find_tagger, is_allowed
+from fixie.allowlist import find_tagger, is_allowed, is_owner
 from fixie.fake_gateway import FakeGateway
 from fixie.model import Identity, TicketUpdate
 
@@ -64,8 +64,23 @@ def test_empty_allowlist_owner_only():
     assert is_allowed(ALICE, (), "owner@example.com") is False
 
 
-def test_owner_not_implicit_when_allowlist_set():
-    assert is_allowed(OWNER, ("alice@example.com",), "owner@example.com") is False
+def test_owner_always_allowed():
+    assert is_allowed(OWNER, ("alice@example.com",), "owner@example.com") is True
+    assert is_allowed(Identity("O", " Owner@Example.com "), ("alice@example.com",), "owner@example.com") is True
+
+
+def test_emails_and_tags_trimmed():
+    assert is_allowed(Identity("A", " alice@example.com "), (" Alice@example.com ",), "owner@example.com") is True
+    assert is_allowed(Identity("E", ""), ("",), "owner@example.com") is False
+    assert is_allowed(Identity("E", " "), (" ",), "owner@example.com") is False
+    assert find_tagger([_update(1, ALICE, added=(" fixie ",))], "fixie") == ALICE
+
+
+def test_is_owner():
+    assert is_owner(OWNER, "OWNER@example.com ") is True
+    assert is_owner(ALICE, "owner@example.com") is False
+    assert is_owner(None, "owner@example.com") is False
+    assert is_owner(Identity("E", ""), "") is False
 
 
 def test_email_case_insensitive():

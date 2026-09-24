@@ -152,3 +152,33 @@ class RunResult:
     status: RunStatus
     summary: str
     questions: tuple[str, ...] = ()
+
+
+class Action(StrEnum):
+    """What the orchestrator should do with a ticket this poll."""
+
+    NEW = "new"
+    SKIP = "skip"
+    RESUME = "resume"
+    REBUILD = "rebuild"
+    RETRY = "retry"
+    GIVE_UP = "give_up"
+    CLEAN_UP = "clean_up"
+    STOP = "stop"
+
+
+@dataclass(frozen=True)
+class TicketSnapshot:
+    ticket: Ticket
+    updates: tuple[TicketUpdate, ...]
+    comments: tuple[Comment, ...]
+    pull_request: PullRequest | None
+    threads: tuple[PrThread, ...]
+    builds: tuple[Build, ...]
+    head: Commit | None
+
+
+@dataclass(frozen=True)
+class Classification:
+    action: Action
+    events: tuple[Event, ...] = ()
