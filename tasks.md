@@ -131,6 +131,12 @@ Tasks are ordered. Tasks 1–16 need no ADO credentials. See `spec.md` for the d
 ### 18. Real ADO gateway, dry-run
 - Implement the interface with the Azure DevOps Python lib.
 - Dry-run mode: real reads, and writes are only logged. Use a read-only PAT on one test ticket.
+- Notes:
+  - Re-add dependencies: `uv add "azure-devops>=7.1.0b4" "msrest>=0.7.1"`.
+  - Connection: `Connection(base_url=org_url, creds=BasicAuthentication("", AZURE_TOKEN))`, then `connection.clients.get_work_item_tracking_client()`.
+  - Ticket fields: `System.Title`, `System.WorkItemType`, `System.State`, `System.Tags` (`"a; b"`), `System.Description`, `Microsoft.VSTS.Common.AcceptanceCriteria`, `Microsoft.VSTS.TCM.ReproSteps`, `System.ChangedDate`.
+  - `WorkItemUpdate.revised_date` is `9999-01-01` on the latest revision; take the time from the new value of `System.ChangedDate` in that update.
+  - WIQL `CONTAINS` on `System.Tags` matches substrings (`fixie` matches `fixie-2`); re-filter for an exact tag client-side.
 - **Done when:** the dry-run log shows the correct classification and input files for the test ticket.
 
 ### 19. First live runs
