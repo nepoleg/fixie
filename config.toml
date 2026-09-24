@@ -1,8 +1,16 @@
-[code]
-dir = "C:\\dev\\fixie"
+[ado]
+org_url = "https://dev.azure.com/<your-org>"
+project = "EETS"
+repo = "EETS"
+ticket_tag = "fixie"
+default_base_branch = "dev"
+allowlist = []
 
 [claude]
-model="haiku"
+model = "haiku"
 
-
-
+[docker]
+image = "fixie-agent"
+mirror_volume = "fixie-mirror"
+gradle_ro_volume = "fixie-gradle-ro"
+ticket_timeout_s = 3600

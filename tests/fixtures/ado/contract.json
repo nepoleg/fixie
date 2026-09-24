@@ -1,0 +1,184 @@
+{
+  "now": "2026-03-01T12:00:00Z",
+  "tickets": {
+    "101": {
+      "title": "Fix login NPE",
+      "work_item_type": "Bug",
+      "state": "Developing",
+      "tags": ["fixie", "backend"],
+      "description": "<p>Login fails</p>",
+      "acceptance_criteria": "<p>No NPE</p>",
+      "repro_steps": "<p>Click login</p>",
+      "changed_date": "2026-02-20T10:00:00Z",
+      "updates": [
+        {
+          "id": 1,
+          "revised_by": {"display_name": "Bob", "unique_name": "bob@example.com"},
+          "revised_date": "2026-02-01T09:00:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": null,
+          "state_to": "New"
+        },
+        {
+          "id": 2,
+          "revised_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "revised_date": "2026-02-02T09:00:00Z",
+          "tags_added": ["fixie"],
+          "tags_removed": [],
+          "state_from": null,
+          "state_to": null
+        },
+        {
+          "id": 3,
+          "revised_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "revised_date": "2026-02-03T09:00:00Z",
+          "tags_added": [],
+          "tags_removed": [],
+          "state_from": "New",
+          "state_to": "Developing"
+        }
+      ],
+      "comments": [
+        {
+          "id": 11,
+          "text": "<p>Please fix</p>",
+          "created_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "created_date": "2026-02-02T10:00:00Z",
+          "modified_by": {"display_name": "Alice", "unique_name": "alice@example.com"},
+          "modified_date": "2026-02-02T10:00:00Z"
+        },
+        {
+          "id": 12,
+          "text": "🤖 fixie status",
+          "created_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "created_date": "2026-02-04T10:00:00Z",
+          "modified_by": {"display_name": "Bob", "unique_name": "bob@example.com"},
+          "modified_date": "2026-02-05T10:00:00Z"
+        }
+      ],
+      "attachments": [
+        {
+          "id": "a1",
+          "name": "shot.png",
+          "url": "https://fake.ado/attachments/a1",
+          "content_b64": "aGVsbG8="
+        }
+      ]
+    },
+    "102": {
+      "title": "Second ticket",
+      "work_item_type": "Bug",
+      "state": "Closed",
+      "tags": ["fixie"],
+      "description": "<p>Desc</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-15T10:00:00Z"
+    },
+    "103": {
+      "title": "Third ticket",
+      "work_item_type": "Task",
+      "state": "Developing",
+      "tags": ["backend"],
+      "description": "<p>Desc</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-16T10:00:00Z"
+    },
+    "104": {
+      "title": "Fourth ticket",
+      "work_item_type": "Bug",
+      "state": "Code Review",
+      "tags": ["Fixie"],
+      "description": "<p>Desc</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-17T10:00:00Z"
+    }
+  },
+  "pull_requests": {
+    "7": {
+      "title": "Fix login NPE",
+      "description": "",
+      "source_branch": "fixie/101",
+      "target_branch": "dev",
+      "status": "active",
+      "is_draft": false,
+      "work_item_ids": [101],
+      "created_date": "2026-02-10T10:00:00Z",
+      "threads": [
+        {
+          "id": 1,
+          "status": "active",
+          "file_path": "/src/Login.java",
+          "line": 42,
+          "published_date": "2026-02-11T10:00:00Z",
+          "last_updated_date": "2026-02-11T10:00:00Z",
+          "comments": [
+            {
+              "id": 1,
+              "author": {"display_name": "Alice", "unique_name": "alice@example.com"},
+              "content": "Null check here",
+              "published_date": "2026-02-11T10:00:00Z",
+              "last_updated_date": "2026-02-11T10:00:00Z",
+              "comment_type": "text"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "status": null,
+          "file_path": null,
+          "line": null,
+          "published_date": "2026-02-12T09:30:00Z",
+          "last_updated_date": "2026-02-12T09:30:00Z",
+          "comments": [
+            {
+              "id": 1,
+              "author": {"display_name": "Owner", "unique_name": "owner@example.com"},
+              "content": "pushed",
+              "published_date": "2026-02-12T09:30:00Z",
+              "last_updated_date": "2026-02-12T09:30:00Z",
+              "comment_type": "system"
+            }
+          ]
+        }
+      ],
+      "builds": [
+        {
+          "id": 55,
+          "status": "completed",
+          "result": "failed",
+          "queue_time": "2026-02-12T10:00:00Z",
+          "finish_time": "2026-02-12T10:20:00Z",
+          "source_version": "abc123",
+          "requested_for": {"display_name": "Alice", "unique_name": "alice@example.com"}
+        },
+        {
+          "id": 56,
+          "status": "inProgress",
+          "result": null,
+          "queue_time": "2026-02-13T10:00:00Z",
+          "finish_time": null,
+          "source_version": "abc123",
+          "requested_for": {"display_name": "Alice", "unique_name": "alice@example.com"}
+        }
+      ]
+    }
+  },
+  "branches": {
+    "fixie/101": {
+      "sha": "abc123",
+      "author": {"display_name": "Alice", "unique_name": "alice@example.com"},
+      "date": "2026-02-12T09:00:00Z",
+      "message": "Fix NPE"
+    },
+    "dev": {
+      "sha": "def456",
+      "author": {"display_name": "Bob", "unique_name": "bob@example.com"},
+      "date": "2026-02-01T08:00:00Z",
+      "message": "Base"
+    }
+  }
+}
