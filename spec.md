@@ -48,7 +48,7 @@ Ticket execution is implemented using Claude Code running in a sandbox.
 
 ### Target repository
 - The main target is the `EETS` repo in project `EETS`.
-- Fixie branches from `dev`, unless the ticket names another base branch.
+- Fixie branches from `dev` (`default_base_branch` in `config.toml`), unless the ticket description has a line `base: <branch>` or `base branch: <branch>` (any case, whole line, first valid one wins).
 - EETS builds with the Gradle wrapper (Gradle 8.12) on Java 17.
 
 ### Build environment

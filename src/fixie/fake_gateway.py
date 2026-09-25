@@ -55,6 +55,7 @@ def _parse_update(d: dict) -> TicketUpdate:
         tags_removed=tuple(d.get("tags_removed", [])),
         state_from=d.get("state_from"),
         state_to=d.get("state_to"),
+        description_changed=d.get("description_changed", False),
     )
 
 

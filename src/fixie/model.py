@@ -54,6 +54,7 @@ class TicketUpdate:
     tags_removed: tuple[str, ...]
     state_from: str | None
     state_to: str | None
+    description_changed: bool = False
 
 
 @dataclass(frozen=True)
