@@ -130,8 +130,8 @@ Ticket execution is implemented using Claude Code running in a sandbox.
 
 ### Orchestrator
 - A main loop polls ADO every few minutes. Each cycle:
-  1. Load open tickets tagged `fixie`, plus tickets that have a fixie status comment and are still open, so removed tags and closed tickets are noticed.
-  2. Skip tickets that are running, were tagged by someone outside the allowlist, or don't fit in the pool this cycle.
+  1. Load open tickets tagged `fixie`, plus tickets that still have a ticket volume, so removed tags and closed tickets are noticed.
+  2. Skip tickets that are running or don't fit in the pool this cycle. A ticket that would run but was tagged by someone outside the allowlist is skipped too.
   3. Read the status comment and collect events since the last finished run.
   4. Classify the ticket:
      - No status comment and no fixie PR or branch: new ticket, fresh session.
@@ -140,13 +140,14 @@ Ticket execution is implemented using Claude Code running in a sandbox.
      - Status comment missing or untrusted, but fixie's PR, branch or comments exist: rebuild the state, start a fresh session with the full history, and put everything since fixie's last summary into `new.json`.
      - Ticket closed and PR merged: delete the volume, no run.
      - Tag removed: stop working on the ticket and keep the volume.
-  5. For tickets with work, write the status "run started", build `in`, and hand the ticket to a worker.
-- Each eligible ticket is handed to a worker from a thread pool. The pool size is the maximum number of parallel tickets; start with 2–3, bounded by Claude rate limits and host resources.
-- A worker handles one ticket end to end: refresh mirror, run the agent container, wait for it to exit, read `out`, publish.
+  5. For tickets with work, hand the ticket to a worker. Tickets that don't fit in the pool wait for the next poll.
+- Each eligible ticket is handed to a worker from a thread pool. The pool size is the maximum number of parallel tickets (`max_parallel`, default 2); the poll interval is `poll_interval_s` (default 300). Both are in `config.toml` `[orchestrator]`.
+- A worker handles one ticket end to end: write the status "run started", build `in` in a fresh temp folder, refresh the mirror, run the agent container, wait for it to exit, read `out`, publish.
 - Waiting on a container blocks only that worker, so tickets run in parallel.
 - An in-flight set of ticket IDs makes sure a ticket never has two runs at once.
 - Mirror writes (refresh, bundle import) are serialized by one global lock.
-- Agent containers are labeled with their ticket ID. After a restart, the orchestrator finds labeled containers and either resumes waiting on them or kills them and lets the next poll re-run the ticket.
+- Agent containers and ticket volumes are labeled with their ticket ID. At startup, the orchestrator kills every labeled container, running or stopped, and lets the next poll re-run the ticket (one attempt used).
+- Ctrl+C kills in-flight runs; they are retried on the next start like a crash.
 - Publishing steps are idempotent (push only if the branch differs, create the PR only if none is open), so re-running any step after a crash is harmless.
 - No asyncio, job queue or webhooks for now. ADO service hooks can replace polling later if latency matters.
 

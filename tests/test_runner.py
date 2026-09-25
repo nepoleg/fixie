@@ -20,6 +20,7 @@ from fixie.runner import (
     run_ticket,
     running_tickets,
     session_id,
+    ticket_volumes,
 )
 from fixie.settings import Settings
 from test_agent_image import INPUT, _docker_ok, _inspect, _run, _uuid8, image, mirror  # noqa: F401
@@ -320,6 +321,14 @@ def test_volume_lifecycle(ticket):
     assert _run("docker", "volume", "inspect", v).returncode != 0
 
     delete_ticket_volume(ticket)
+
+
+def test_ticket_volumes_lists_labelled(ticket):
+    ensure_ticket_volume(ticket)
+    assert ticket in ticket_volumes()
+
+    delete_ticket_volume(ticket)
+    assert ticket not in ticket_volumes()
 
 
 @pytest.mark.parametrize("case", ["nomirror", "noimage"])

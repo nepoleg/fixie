@@ -1,5 +1,6 @@
 import inspect
 import json
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -246,6 +247,53 @@ def test_second_active_pr_rejected(gateway):
         gateway.create_pull_request("fixie/101", "dev", "T", "D")
     assert gateway.writes == []
     assert [p.id for p in gateway.find_pull_requests("fixie/101")] == [7]
+
+
+def test_concurrent_writes_get_unique_ids(gateway):
+    def add_many():
+        for _ in range(25):
+            gateway.add_comment(101, "c")
+
+    threads = [threading.Thread(target=add_many) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    comments = gateway.get_comments(101)
+    new_comments = [c for c in comments if c.text == "c"]
+    assert len(new_comments) == 200
+    assert len({c.id for c in new_comments}) == 200
+    assert len({c.modified_date for c in new_comments}) == 200
+
+
+def test_concurrent_reads_during_writes_no_error(gateway):
+    errors = []
+    stop = threading.Event()
+
+    def create_many():
+        prefix = threading.get_ident()
+        for i in range(200):
+            gateway.create_pull_request(f"branch-{prefix}-{i}", "dev", "T", "D")
+
+    def find_many():
+        while not stop.is_set():
+            try:
+                gateway.find_pull_requests("fixie/101")
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+    finder = threading.Thread(target=find_many)
+    finder.start()
+    creators = [threading.Thread(target=create_many) for _ in range(4)]
+    for t in creators:
+        t.start()
+    for t in creators:
+        t.join()
+    stop.set()
+    finder.join()
+
+    assert errors == []
 
 
 def test_naive_datetime_in_fixture_rejected(tmp_path):

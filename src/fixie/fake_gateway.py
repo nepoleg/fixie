@@ -2,6 +2,7 @@
 
 import base64
 import json
+import threading
 from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -140,6 +141,7 @@ class FakeGateway(AdoGateway):
         self.now = _parse_dt(data["now"], "now")
         self.owner = owner
         self.writes: list[tuple[str, dict[str, object]]] = []
+        self._lock = threading.RLock()
 
         self.tickets: dict[int, Ticket] = {}
         self.updates: dict[int, list[TicketUpdate]] = {}
@@ -182,131 +184,146 @@ class FakeGateway(AdoGateway):
 
     def find_tagged_tickets(self, tag: str) -> list[int]:
         tag_lower = tag.lower()
-        return sorted(
-            ticket_id
-            for ticket_id, ticket in self.tickets.items()
-            if ticket.state in OPEN_STATES and any(t.lower() == tag_lower for t in ticket.tags)
-        )
+        with self._lock:
+            return sorted(
+                ticket_id
+                for ticket_id, ticket in self.tickets.items()
+                if ticket.state in OPEN_STATES and any(t.lower() == tag_lower for t in ticket.tags)
+            )
 
     def get_ticket(self, ticket_id: int) -> Ticket:
-        return self.tickets[ticket_id]
+        with self._lock:
+            return self.tickets[ticket_id]
 
     def get_updates(self, ticket_id: int) -> list[TicketUpdate]:
-        return list(self.updates.get(ticket_id, []))
+        with self._lock:
+            return list(self.updates.get(ticket_id, []))
 
     def get_comments(self, ticket_id: int) -> list[Comment]:
-        return list(self.comments.get(ticket_id, []))
+        with self._lock:
+            return list(self.comments.get(ticket_id, []))
 
     def get_attachments(self, ticket_id: int) -> list[Attachment]:
-        return list(self.attachments.get(ticket_id, []))
+        with self._lock:
+            return list(self.attachments.get(ticket_id, []))
 
     def download_attachment(self, url: str) -> bytes:
-        return self.blobs[url]
+        with self._lock:
+            return self.blobs[url]
 
     def get_pull_request(self, pr_id: int) -> PullRequest:
-        return self.pull_requests[pr_id]
+        with self._lock:
+            return self.pull_requests[pr_id]
 
     def find_pull_requests(self, source_branch: str) -> list[PullRequest]:
-        return sorted(
-            (pr for pr in self.pull_requests.values() if pr.source_branch == source_branch),
-            key=lambda pr: pr.id,
-        )
+        with self._lock:
+            return sorted(
+                (pr for pr in self.pull_requests.values() if pr.source_branch == source_branch),
+                key=lambda pr: pr.id,
+            )
 
     def get_threads(self, pr_id: int) -> list[PrThread]:
-        return list(self.threads.get(pr_id, []))
+        with self._lock:
+            return list(self.threads.get(pr_id, []))
 
     def get_builds(self, pr_id: int) -> list[Build]:
-        return list(self.builds.get(pr_id, []))
+        with self._lock:
+            return list(self.builds.get(pr_id, []))
 
     def get_branch_head(self, branch: str) -> Commit | None:
-        return self.branches.get(branch)
+        with self._lock:
+            return self.branches.get(branch)
 
     def add_comment(self, ticket_id: int, text: str) -> Comment:
-        if ticket_id not in self.tickets:
-            raise KeyError(ticket_id)
-        new_id = max((c.id for cs in self.comments.values() for c in cs), default=0) + 1
-        timestamp = self._tick()
-        comment = Comment(
-            id=new_id,
-            text=text,
-            created_by=self.owner,
-            created_date=timestamp,
-            modified_by=self.owner,
-            modified_date=timestamp,
-        )
-        self.comments.setdefault(ticket_id, []).append(comment)
-        self._record("add_comment", {"ticket_id": ticket_id, "text": text})
-        return comment
+        with self._lock:
+            if ticket_id not in self.tickets:
+                raise KeyError(ticket_id)
+            new_id = max((c.id for cs in self.comments.values() for c in cs), default=0) + 1
+            timestamp = self._tick()
+            comment = Comment(
+                id=new_id,
+                text=text,
+                created_by=self.owner,
+                created_date=timestamp,
+                modified_by=self.owner,
+                modified_date=timestamp,
+            )
+            self.comments.setdefault(ticket_id, []).append(comment)
+            self._record("add_comment", {"ticket_id": ticket_id, "text": text})
+            return comment
 
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
-        if ticket_id not in self.tickets:
-            raise KeyError(ticket_id)
-        comments = self.comments.get(ticket_id, [])
-        for i, comment in enumerate(comments):
-            if comment.id == comment_id:
-                timestamp = self._tick()
-                edited = replace(comment, text=text, modified_by=self.owner, modified_date=timestamp)
-                comments[i] = edited
-                self._record("edit_comment", {"ticket_id": ticket_id, "comment_id": comment_id, "text": text})
-                return edited
-        raise KeyError(comment_id)
+        with self._lock:
+            if ticket_id not in self.tickets:
+                raise KeyError(ticket_id)
+            comments = self.comments.get(ticket_id, [])
+            for i, comment in enumerate(comments):
+                if comment.id == comment_id:
+                    timestamp = self._tick()
+                    edited = replace(comment, text=text, modified_by=self.owner, modified_date=timestamp)
+                    comments[i] = edited
+                    self._record("edit_comment", {"ticket_id": ticket_id, "comment_id": comment_id, "text": text})
+                    return edited
+            raise KeyError(comment_id)
 
     def create_pull_request(self, source_branch: str, target_branch: str, title: str, description: str) -> PullRequest:
-        if any(pr.source_branch == source_branch and pr.status == "active" for pr in self.pull_requests.values()):
-            raise ValueError(f"active pull request exists for {source_branch}")
-        new_id = max(self.pull_requests.keys(), default=0) + 1
-        timestamp = self._tick()
-        pr = PullRequest(
-            id=new_id,
-            title=title,
-            description=description,
-            source_branch=source_branch,
-            target_branch=target_branch,
-            status="active",
-            is_draft=False,
-            work_item_ids=(),
-            created_date=timestamp,
-        )
-        self.pull_requests[new_id] = pr
-        self.threads[new_id] = []
-        self.builds[new_id] = []
-        self._record(
-            "create_pull_request",
-            {"source_branch": source_branch, "target_branch": target_branch, "title": title, "description": description},
-        )
-        return pr
+        with self._lock:
+            if any(pr.source_branch == source_branch and pr.status == "active" for pr in self.pull_requests.values()):
+                raise ValueError(f"active pull request exists for {source_branch}")
+            new_id = max(self.pull_requests.keys(), default=0) + 1
+            timestamp = self._tick()
+            pr = PullRequest(
+                id=new_id,
+                title=title,
+                description=description,
+                source_branch=source_branch,
+                target_branch=target_branch,
+                status="active",
+                is_draft=False,
+                work_item_ids=(),
+                created_date=timestamp,
+            )
+            self.pull_requests[new_id] = pr
+            self.threads[new_id] = []
+            self.builds[new_id] = []
+            self._record(
+                "create_pull_request",
+                {"source_branch": source_branch, "target_branch": target_branch, "title": title, "description": description},
+            )
+            return pr
 
     def update_pull_request(self, pr_id: int, title: str, description: str) -> PullRequest:
-        if pr_id not in self.pull_requests:
-            raise KeyError(pr_id)
-        self._tick()
-        updated = replace(self.pull_requests[pr_id], title=title, description=description)
-        self.pull_requests[pr_id] = updated
-        self._record("update_pull_request", {"pr_id": pr_id, "title": title, "description": description})
-        return updated
+        with self._lock:
+            if pr_id not in self.pull_requests:
+                raise KeyError(pr_id)
+            self._tick()
+            updated = replace(self.pull_requests[pr_id], title=title, description=description)
+            self.pull_requests[pr_id] = updated
+            self._record("update_pull_request", {"pr_id": pr_id, "title": title, "description": description})
+            return updated
 
     def link_work_item(self, pr_id: int, ticket_id: int) -> None:
-        if pr_id not in self.pull_requests:
-            raise KeyError(pr_id)
-        if ticket_id not in self.tickets:
-            raise KeyError(ticket_id)
-        self._tick()
-        pr = self.pull_requests[pr_id]
-        if ticket_id not in pr.work_item_ids:
-            self.pull_requests[pr_id] = replace(pr, work_item_ids=pr.work_item_ids + (ticket_id,))
-        self._record("link_work_item", {"pr_id": pr_id, "ticket_id": ticket_id})
+        with self._lock:
+            if pr_id not in self.pull_requests:
+                raise KeyError(pr_id)
+            if ticket_id not in self.tickets:
+                raise KeyError(ticket_id)
+            self._tick()
+            pr = self.pull_requests[pr_id]
+            if ticket_id not in pr.work_item_ids:
+                self.pull_requests[pr_id] = replace(pr, work_item_ids=pr.work_item_ids + (ticket_id,))
+            self._record("link_work_item", {"pr_id": pr_id, "ticket_id": ticket_id})
 
     def attach_file(self, ticket_id: int, name: str, content: bytes) -> Attachment:
-        if ticket_id not in self.tickets:
-            raise KeyError(ticket_id)
-        self._tick()
-        self._attachment_seq += 1
-        new_id = f"att-{self._attachment_seq}"
-        url = f"https://fake.ado/attachments/{new_id}"
-        attachment = Attachment(id=new_id, name=name, url=url)
-        self.attachments.setdefault(ticket_id, []).append(attachment)
-        self.blobs[url] = content
-        self._record("attach_file", {"ticket_id": ticket_id, "name": name, "content": content})
-        return attachment
-
-    # ponytail: no lock; add one if an e2e test drives it from worker threads.
+        with self._lock:
+            if ticket_id not in self.tickets:
+                raise KeyError(ticket_id)
+            self._tick()
+            self._attachment_seq += 1
+            new_id = f"att-{self._attachment_seq}"
+            url = f"https://fake.ado/attachments/{new_id}"
+            attachment = Attachment(id=new_id, name=name, url=url)
+            self.attachments.setdefault(ticket_id, []).append(attachment)
+            self.blobs[url] = content
+            self._record("attach_file", {"ticket_id": ticket_id, "name": name, "content": content})
+            return attachment

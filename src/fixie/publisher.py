@@ -107,6 +107,7 @@ def publish(
     *,
     push=import_and_push,
     mirror_lock=MIRROR_LOCK,
+    helper_config: HelperConfig | None = None,
 ) -> FixieStatus | None:
     """Push a finished run's bundle, create/link its PR, post its summary and log, and finish the status.
 
@@ -123,12 +124,13 @@ def publish(
         logger.info(f"publisher: ticket {ticket_id} run not ok, nothing published")
         return None
     result = outcome.result
+    cfg = helper_config or HelperConfig.from_settings(settings)
 
     pushed = None
     if outcome.has_bundle:
         try:
             with mirror_lock:
-                pushed = push(HelperConfig.from_settings(settings), outcome.ticket_id, outcome.volume)
+                pushed = push(cfg, outcome.ticket_id, outcome.volume)
         except HelperError as exc:
             logger.warning(f"publisher: ticket {ticket_id} push failed: {exc}")
             return None
@@ -146,6 +148,11 @@ def publish(
             _redact(result.summary, settings)[:4000],
         )
         logger.info(f"publisher: ticket {ticket_id} created PR {pr.id}")
+    elif pr is not None and pushed is not None:
+        description = _redact(result.summary, settings)[:4000]
+        if pr.description != description:
+            gateway.update_pull_request(pr.id, pr.title, description)
+            logger.info(f"publisher: ticket {ticket_id} updated PR {pr.id}")
     if pr is not None and ticket_id not in pr.work_item_ids:
         gateway.link_work_item(pr.id, ticket_id)
     pr_id = pr.id if pr is not None else status.pr_id

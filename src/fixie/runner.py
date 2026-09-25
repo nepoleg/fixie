@@ -145,6 +145,20 @@ def running_tickets() -> set[str]:
             _close(client)
 
 
+def ticket_volumes() -> set[str]:
+    """Ticket ids that still have a ticket volume (volumes labelled fixie.ticket)."""
+    client = None
+    try:
+        client = docker.from_env()
+        volumes = client.volumes.list(filters={"label": LABEL})
+        return {v.attrs["Labels"][LABEL] for v in volumes}
+    except (DockerException, RequestException) as exc:
+        raise RunnerError(f"ticket_volumes failed: {type(exc).__name__}") from None
+    finally:
+        if client is not None:
+            _close(client)
+
+
 def kill_ticket(ticket_id: str) -> None:
     """Force-removes every container (running or a stopped leftover) for a ticket."""
     _check_ticket_id(ticket_id)

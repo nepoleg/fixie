@@ -1,0 +1,101 @@
+{
+  "now": "2026-03-01T12:00:00Z",
+  "tickets": {
+    "601": {
+      "title": "Add a greeting",
+      "work_item_type": "Task",
+      "state": "Developing",
+      "tags": ["fixie"],
+      "description": "<p>Do it.</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-20T10:00:00Z",
+      "updates": [
+        {
+          "id": 1,
+          "revised_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "revised_date": "2026-02-20T09:00:00Z",
+          "tags_added": ["fixie"]
+        }
+      ]
+    },
+    "602": {
+      "title": "Outsider ticket",
+      "work_item_type": "Task",
+      "state": "Developing",
+      "tags": ["fixie"],
+      "description": "<p>Do it.</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-20T10:00:00Z",
+      "updates": [
+        {
+          "id": 1,
+          "revised_by": {"display_name": "Mallory", "unique_name": "mallory@example.com"},
+          "revised_date": "2026-02-20T09:00:00Z",
+          "tags_added": ["fixie"]
+        }
+      ]
+    },
+    "603": {
+      "title": "Closed ticket",
+      "work_item_type": "Task",
+      "state": "Closed",
+      "tags": ["fixie"],
+      "description": "<p>Do it.</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-20T10:00:00Z",
+      "updates": [
+        {
+          "id": 1,
+          "revised_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "revised_date": "2026-02-20T09:00:00Z",
+          "tags_added": ["fixie"]
+        }
+      ]
+    },
+    "604": {
+      "title": "Untagged ticket",
+      "work_item_type": "Task",
+      "state": "Developing",
+      "tags": [],
+      "description": "<p>Do it.</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-20T10:00:00Z",
+      "updates": [
+        {
+          "id": 1,
+          "revised_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "revised_date": "2026-02-20T09:00:00Z",
+          "tags_added": ["fixie"]
+        },
+        {
+          "id": 2,
+          "revised_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "revised_date": "2026-02-21T09:00:00Z",
+          "tags_removed": ["fixie"]
+        }
+      ]
+    },
+    "605": {
+      "title": "Second ticket",
+      "work_item_type": "Task",
+      "state": "Developing",
+      "tags": ["fixie"],
+      "description": "<p>Do it.</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-20T10:00:00Z",
+      "updates": [
+        {
+          "id": 1,
+          "revised_by": {"display_name": "Owner", "unique_name": "owner@example.com"},
+          "revised_date": "2026-02-20T09:00:00Z",
+          "tags_added": ["fixie"]
+        }
+      ]
+    }
+  }
+}

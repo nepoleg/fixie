@@ -32,6 +32,8 @@ class Settings:
     azure_token: str | None = field(repr=False)
     claude_oauth_token: str | None = field(repr=False)
     ado_feed_token: str | None = field(repr=False)
+    poll_interval_s: int = 300
+    max_parallel: int = 2
 
 
 def _clean(value: str | None) -> str | None:
@@ -59,9 +61,16 @@ def load_settings(config_path: Path, env_path: Path) -> Settings:
 
     ado = config["ado"]
     docker = config["docker"]
-    max_attempts = int(config.get("orchestrator", {}).get("max_attempts", 3))
+    orchestrator = config.get("orchestrator", {})
+    max_attempts = int(orchestrator.get("max_attempts", 3))
     if max_attempts < 1:
         raise SettingsError(f"max_attempts must be at least 1, got {max_attempts}")
+    poll_interval_s = int(orchestrator.get("poll_interval_s", 300))
+    if poll_interval_s < 1:
+        raise SettingsError(f"poll_interval_s must be at least 1, got {poll_interval_s}")
+    max_parallel = int(orchestrator.get("max_parallel", 2))
+    if max_parallel < 1:
+        raise SettingsError(f"max_parallel must be at least 1, got {max_parallel}")
 
     return Settings(
         ado_org_url=ado["org_url"],
@@ -81,4 +90,6 @@ def load_settings(config_path: Path, env_path: Path) -> Settings:
         azure_token=_clean(env.get("AZURE_TOKEN")),
         claude_oauth_token=_clean(env.get("CLAUDE_CODE_OAUTH_TOKEN")),
         ado_feed_token=_clean(env.get("ADO_FEED_TOKEN")),
+        poll_interval_s=poll_interval_s,
+        max_parallel=max_parallel,
     )

@@ -274,6 +274,32 @@ def test_existing_active_pr_not_duplicated():
     assert finished.last_build_id == 40
 
 
+def test_existing_pr_description_updated_on_push():
+    gw = _gateway()
+    status = mark_run_started(gw, SETTINGS, 502, None)
+    gw.writes.clear()
+    snapshot = load_snapshot(gw, 502)
+    outcome = _outcome(ticket_id="502", summary="Fixed it", has_bundle=True)
+
+    publish(gw, SETTINGS, snapshot, status, outcome, push=_fake_push([]), mirror_lock=LOCK)
+
+    update_writes = [w for w in gw.writes if w[0] == "update_pull_request"]
+    assert update_writes == [("update_pull_request", {"pr_id": 9, "title": "fixie: #502 Add export", "description": "Fixed it"})]
+    assert gw.get_pull_request(9).description == "Fixed it"
+
+
+def test_existing_pr_not_updated_without_push():
+    gw = _gateway()
+    status = mark_run_started(gw, SETTINGS, 502, None)
+    gw.writes.clear()
+    snapshot = load_snapshot(gw, 502)
+    outcome = _outcome(ticket_id="502", has_bundle=False)
+
+    publish(gw, SETTINGS, snapshot, status, outcome, push=_fake_push([]), mirror_lock=LOCK)
+
+    assert [w for w in gw.writes if w[0] == "update_pull_request"] == []
+
+
 def test_push_failure_leaves_status_unfinished(caplog):
     gw = _gateway()
     status = mark_run_started(gw, SETTINGS, 501, None)

@@ -17,3 +17,5 @@ ticket_timeout_s = 3600
 
 [orchestrator]
 max_attempts = 3
+poll_interval_s = 300
+max_parallel = 2

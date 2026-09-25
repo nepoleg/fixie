@@ -146,6 +146,45 @@ def test_max_attempts_below_one_rejected(tmp_path):
     assert "max_attempts" in str(exc_info.value)
 
 
+def test_orchestrator_settings_default_and_config(tmp_path):
+    config_text = CONFIG_PATH.read_text(encoding="utf-8")
+    env_path = _write_env(tmp_path, ["FIXIE_STATE_SECRET=s", "FIXIE_OWNER_EMAIL=owner@example.com"])
+
+    settings = load_settings(CONFIG_PATH, env_path)
+    assert settings.poll_interval_s == 300
+    assert settings.max_parallel == 2
+
+    no_lines_text = config_text.replace("poll_interval_s = 300\nmax_parallel = 2\n", "")
+    assert no_lines_text != config_text
+    no_lines_path = tmp_path / "no_lines.toml"
+    no_lines_path.write_text(no_lines_text, encoding="utf-8")
+    default_settings = load_settings(no_lines_path, env_path)
+    assert default_settings.poll_interval_s == 300
+    assert default_settings.max_parallel == 2
+
+    custom_text = config_text.replace("poll_interval_s = 300", "poll_interval_s = 60").replace(
+        "max_parallel = 2", "max_parallel = 3"
+    )
+    custom_path = tmp_path / "custom.toml"
+    custom_path.write_text(custom_text, encoding="utf-8")
+    custom_settings = load_settings(custom_path, env_path)
+    assert custom_settings.poll_interval_s == 60
+    assert custom_settings.max_parallel == 3
+
+
+@pytest.mark.parametrize("field_name", ["poll_interval_s", "max_parallel"])
+def test_orchestrator_settings_below_one_rejected(tmp_path, field_name):
+    config_text = CONFIG_PATH.read_text(encoding="utf-8")
+    config_text = config_text.replace(f"{field_name} = {'300' if field_name == 'poll_interval_s' else '2'}", f"{field_name} = 0")
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config_text, encoding="utf-8")
+
+    env_path = _write_env(tmp_path, ["FIXIE_STATE_SECRET=s", "FIXIE_OWNER_EMAIL=owner@example.com"])
+    with pytest.raises(SettingsError) as exc_info:
+        load_settings(config_path, env_path)
+    assert field_name in str(exc_info.value)
+
+
 def test_does_not_modify_os_environ(tmp_path, monkeypatch):
     keys = [
         "FIXIE_STATE_SECRET",
