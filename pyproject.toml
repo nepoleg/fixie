@@ -18,3 +18,4 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["docker: needs a reachable Docker engine and the fixie-agent image"]
