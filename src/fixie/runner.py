@@ -89,6 +89,8 @@ def parse_result(data: bytes) -> RunResult | None:
         run_status = RunStatus(status)
     except ValueError:
         return None
+    if run_status == RunStatus.GAVE_UP:
+        return None
     return RunResult(run_status, summary, tuple(questions))
 
 

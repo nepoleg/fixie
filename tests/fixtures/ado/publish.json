@@ -1,0 +1,65 @@
+{
+  "now": "2026-03-01T12:00:00Z",
+  "tickets": {
+    "501": {
+      "title": "Fix the login bug",
+      "work_item_type": "Bug",
+      "state": "Developing",
+      "tags": ["fixie"],
+      "description": "<p>Login fails.</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-20T10:00:00Z"
+    },
+    "502": {
+      "title": "Add export",
+      "work_item_type": "Task",
+      "state": "Code Review",
+      "tags": ["fixie"],
+      "description": "<p>Export.</p>",
+      "acceptance_criteria": "",
+      "repro_steps": "",
+      "changed_date": "2026-02-21T10:00:00Z"
+    }
+  },
+  "pull_requests": {
+    "9": {
+      "title": "fixie: #502 Add export",
+      "description": "",
+      "source_branch": "fixie/502",
+      "target_branch": "dev",
+      "status": "active",
+      "is_draft": false,
+      "work_item_ids": [],
+      "created_date": "2026-02-22T10:00:00Z",
+      "builds": [
+        {
+          "id": 40,
+          "status": "completed",
+          "result": "failed",
+          "queue_time": "2026-02-22T10:30:00Z",
+          "finish_time": "2026-02-22T11:00:00Z",
+          "source_version": "abc123",
+          "requested_for": {"display_name": "Alice", "unique_name": "alice@example.com"}
+        },
+        {
+          "id": 41,
+          "status": "inProgress",
+          "result": null,
+          "queue_time": "2026-02-23T10:00:00Z",
+          "finish_time": null,
+          "source_version": "def456",
+          "requested_for": {"display_name": "Alice", "unique_name": "alice@example.com"}
+        }
+      ]
+    }
+  },
+  "branches": {
+    "dev": {
+      "sha": "def456",
+      "author": {"display_name": "Bob", "unique_name": "bob@example.com"},
+      "date": "2026-02-01T08:00:00Z",
+      "message": "Base"
+    }
+  }
+}

@@ -3,6 +3,7 @@
 import base64
 import logging
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote, urlsplit
@@ -15,6 +16,7 @@ from fixie.settings import Settings
 
 HELPER_IMAGE = "fixie-helper:latest"
 JOB_TIMEOUT_S = 3600
+MIRROR_LOCK = threading.Lock()
 
 _VOLUME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _TICKET_ID_RE = re.compile(r"^[0-9]{1,10}$")

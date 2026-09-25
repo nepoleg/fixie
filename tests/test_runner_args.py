@@ -94,6 +94,10 @@ def test_rejects_bad_args(tmp_path, call):
         call(tmp_path, _settings())
 
 
+def test_parse_result_rejects_gave_up():
+    assert parse_result(b'{"status":"gave_up","summary":"s","questions":[]}') is None
+
+
 def test_outcome_ok():
     assert RunOutcome("1", "v", 0, False, RunResult(RunStatus.DONE, "s")).ok is True
     assert RunOutcome("1", "v", 4, False, RunResult(RunStatus.DONE, "s")).ok is False

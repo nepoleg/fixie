@@ -6,7 +6,7 @@ from fixie.model import EventType, FixieStatus, RunStatus
 
 
 def test_enum_values():
-    assert [s.value for s in RunStatus] == ["done", "blocked", "needs_info"]
+    assert [s.value for s in RunStatus] == ["done", "blocked", "needs_info", "gave_up"]
     assert [e.value for e in EventType] == [
         "ticket_comment",
         "pr_comment",

@@ -229,6 +229,25 @@ def test_write_times_strictly_increase(gateway):
     assert (c3.created_date - c2.created_date).total_seconds() == 1
 
 
+def test_writes_to_unknown_ticket_rejected(gateway):
+    with pytest.raises(KeyError):
+        gateway.add_comment(999, "hi")
+    with pytest.raises(KeyError):
+        gateway.edit_comment(999, 1, "hi")
+    with pytest.raises(KeyError):
+        gateway.attach_file(999, "log.gz", b"1")
+    with pytest.raises(KeyError):
+        gateway.link_work_item(7, 999)
+    assert gateway.writes == []
+
+
+def test_second_active_pr_rejected(gateway):
+    with pytest.raises(ValueError):
+        gateway.create_pull_request("fixie/101", "dev", "T", "D")
+    assert gateway.writes == []
+    assert [p.id for p in gateway.find_pull_requests("fixie/101")] == [7]
+
+
 def test_naive_datetime_in_fixture_rejected(tmp_path):
     data = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
     data["tickets"]["101"]["changed_date"] = "2026-01-01T00:00:00"

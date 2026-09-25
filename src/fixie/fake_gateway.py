@@ -222,6 +222,8 @@ class FakeGateway(AdoGateway):
         return self.branches.get(branch)
 
     def add_comment(self, ticket_id: int, text: str) -> Comment:
+        if ticket_id not in self.tickets:
+            raise KeyError(ticket_id)
         new_id = max((c.id for cs in self.comments.values() for c in cs), default=0) + 1
         timestamp = self._tick()
         comment = Comment(
@@ -237,6 +239,8 @@ class FakeGateway(AdoGateway):
         return comment
 
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
+        if ticket_id not in self.tickets:
+            raise KeyError(ticket_id)
         comments = self.comments.get(ticket_id, [])
         for i, comment in enumerate(comments):
             if comment.id == comment_id:
@@ -248,6 +252,8 @@ class FakeGateway(AdoGateway):
         raise KeyError(comment_id)
 
     def create_pull_request(self, source_branch: str, target_branch: str, title: str, description: str) -> PullRequest:
+        if any(pr.source_branch == source_branch and pr.status == "active" for pr in self.pull_requests.values()):
+            raise ValueError(f"active pull request exists for {source_branch}")
         new_id = max(self.pull_requests.keys(), default=0) + 1
         timestamp = self._tick()
         pr = PullRequest(
@@ -282,6 +288,8 @@ class FakeGateway(AdoGateway):
     def link_work_item(self, pr_id: int, ticket_id: int) -> None:
         if pr_id not in self.pull_requests:
             raise KeyError(pr_id)
+        if ticket_id not in self.tickets:
+            raise KeyError(ticket_id)
         self._tick()
         pr = self.pull_requests[pr_id]
         if ticket_id not in pr.work_item_ids:
@@ -289,6 +297,8 @@ class FakeGateway(AdoGateway):
         self._record("link_work_item", {"pr_id": pr_id, "ticket_id": ticket_id})
 
     def attach_file(self, ticket_id: int, name: str, content: bytes) -> Attachment:
+        if ticket_id not in self.tickets:
+            raise KeyError(ticket_id)
         self._tick()
         self._attachment_seq += 1
         new_id = f"att-{self._attachment_seq}"

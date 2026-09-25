@@ -8,11 +8,12 @@ BOT_SIGN = "🤖"
 
 
 class RunStatus(StrEnum):
-    """Outcome of one agent run on a ticket."""
+    """Outcome of one agent run on a ticket, or fixie giving up on it."""
 
     DONE = "done"
     BLOCKED = "blocked"
     NEEDS_INFO = "needs_info"
+    GAVE_UP = "gave_up"
 
 
 class EventType(StrEnum):
