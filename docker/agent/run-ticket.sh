@@ -26,6 +26,11 @@ if [ "${FIXIE_FAKE_AGENT:-}" != "1" ]; then
   [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] || fail 2 "invalid CLAUDE_CODE_OAUTH_TOKEN"
 fi
 
+if [ -d /tmp/fixie-in ]; then
+  chmod -R u+rwX ~/in 2>/dev/null || true
+  { rm -rf ~/in && cp -R /tmp/fixie-in ~/in; } || fail 2 "input copy failed"
+fi
+
 [ -f ~/in/ticket.md ] || fail 2 "missing /home/agent/in/ticket.md"
 [ -f ~/in/new.json ] || fail 2 "missing /home/agent/in/new.json"
 
