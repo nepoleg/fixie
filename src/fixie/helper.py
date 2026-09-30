@@ -15,7 +15,6 @@ from requests.exceptions import RequestException
 from fixie.settings import Settings
 
 HELPER_IMAGE = "fixie-helper:latest"
-JOB_TIMEOUT_S = 3600
 MIRROR_LOCK = threading.Lock()
 
 _VOLUME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
@@ -38,6 +37,7 @@ class HelperConfig:
     token: str | None = field(default=None, repr=False)
     image: str = HELPER_IMAGE
     extra_volumes: tuple[str, ...] = ()
+    timeout_s: int = 3600
 
     def __post_init__(self):
         if not _VOLUME_RE.match(self.mirror_volume):
@@ -61,6 +61,7 @@ class HelperConfig:
             gradle_ro_volume=settings.gradle_ro_volume,
             remote_url=remote_url,
             token=settings.azure_token,
+            timeout_s=settings.helper_timeout_s,
         )
 
 
@@ -156,7 +157,7 @@ def _run_job(cfg, command, volumes, environment, cap_add):
     try:
         try:
             container.start()
-            result = container.wait(timeout=JOB_TIMEOUT_S)
+            result = container.wait(timeout=cfg.timeout_s)
         except RequestException:
             try:
                 container.kill()

@@ -34,6 +34,7 @@ class Settings:
     ado_feed_token: str | None = field(repr=False)
     poll_interval_s: int = 300
     max_parallel: int = 2
+    helper_timeout_s: int = 3600
 
 
 def _clean(value: str | None) -> str | None:
@@ -71,6 +72,9 @@ def load_settings(config_path: Path, env_path: Path) -> Settings:
     max_parallel = int(orchestrator.get("max_parallel", 2))
     if max_parallel < 1:
         raise SettingsError(f"max_parallel must be at least 1, got {max_parallel}")
+    helper_timeout_s = int(docker.get("helper_timeout_s", 3600))
+    if helper_timeout_s < 1:
+        raise SettingsError(f"helper_timeout_s must be at least 1, got {helper_timeout_s}")
 
     return Settings(
         ado_org_url=ado["org_url"],
@@ -92,4 +96,5 @@ def load_settings(config_path: Path, env_path: Path) -> Settings:
         ado_feed_token=_clean(env.get("ADO_FEED_TOKEN")),
         poll_interval_s=poll_interval_s,
         max_parallel=max_parallel,
+        helper_timeout_s=helper_timeout_s,
     )

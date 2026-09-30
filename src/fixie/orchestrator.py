@@ -9,7 +9,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 from fixie import helper, publisher, runner
-from fixie.allowlist import find_tagger, is_allowed, is_owner
+from fixie.allowlist import find_tagger, is_allowed
 from fixie.classify import classify
 from fixie.events import load_snapshot
 from fixie.gateway import AdoGateway
@@ -18,7 +18,7 @@ from fixie.model import BOT_SIGN, Action, RunStatus
 from fixie.render import parse_base_branch, write_input
 from fixie.runner import RunnerError
 from fixie.settings import Settings
-from fixie.status_comment import find_status_comment, is_bot_signed, trusted_status
+from fixie.status_comment import find_status_comment, trusted_status
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,8 @@ _START_ACTIONS = (Action.NEW, Action.REBUILD)
 def _unauthorized_text(tag: str) -> str:
     return (
         f'<p>{BOT_SIGN} fixie: this ticket was tagged "{html.escape(tag)}" by someone who is not on '
-        f"fixie's allowlist, so fixie will not work on it. Ask an allowlisted user to re-add the tag.</p>\n"
+        f"fixie's allowlist, so fixie removed the tag and will not work on it. "
+        f"Ask an allowlisted user to re-add the tag.</p>\n"
         f"<p><code>{UNAUTHORIZED_MARKER}</code></p>"
     )
 
@@ -75,14 +76,8 @@ class Orchestrator:
         for tid in sorted(ids, key=int):
             self._kill_ticket(tid)
 
-    def _post_unauthorized(self, tid: int, comments, tag: str) -> None:
-        owner = self.settings.owner_email
-        already = any(
-            is_owner(c.created_by, owner) and is_bot_signed(c.text) and UNAUTHORIZED_MARKER in c.text
-            for c in comments
-        )
-        if already:
-            return
+    def _reject_unauthorized(self, tid: int, tag: str) -> None:
+        self.gateway.remove_tag(tid, tag)
         self.gateway.add_comment(tid, _unauthorized_text(tag))
 
     def _submit(self, tid: int, snapshot, status, classification) -> Future | None:
@@ -101,11 +96,12 @@ class Orchestrator:
     def poll_once(self) -> list[Future]:
         """Classify every candidate ticket and hand eligible ones to workers; returns the submitted futures."""
         gw, s = self.gateway, self.settings
-        ids = set(gw.find_tagged_tickets(s.ticket_tag)) | {
-            int(t) for t in self._ticket_volumes() if t.isascii() and t.isdigit()
-        }
+        tagged = gw.find_tagged_tickets(s.ticket_tag)
+        ids = tagged + sorted(
+            {int(t) for t in self._ticket_volumes() if t.isascii() and t.isdigit()} - set(tagged)
+        )
         futures: list[Future] = []
-        for tid in sorted(ids):
+        for tid in ids:
             try:
                 with self._lock:
                     in_flight = tid in self._in_flight
@@ -124,8 +120,8 @@ class Orchestrator:
                 if action in RUN_ACTIONS:
                     tagger = find_tagger(snapshot.updates, s.ticket_tag)
                     if not is_allowed(tagger, s.allowlist, s.owner_email):
-                        logger.info(f"orchestrator: ticket {tid} tagged by non-allowlisted user, skipped")
-                        self._post_unauthorized(tid, snapshot.comments, s.ticket_tag)
+                        logger.info(f"orchestrator: ticket {tid} tagged by non-allowlisted user, tag removed")
+                        self._reject_unauthorized(tid, s.ticket_tag)
                         continue
                     if self._stop.is_set():
                         continue

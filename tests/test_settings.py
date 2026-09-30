@@ -25,6 +25,7 @@ def test_loads_with_only_required_keys(tmp_path):
     assert settings.ticket_tag == "fixie"
     assert settings.default_base_branch == "dev"
     assert settings.ticket_timeout_s == 3600
+    assert settings.helper_timeout_s == 3600
     assert settings.max_attempts == 3
     assert settings.allowlist == ()
     assert settings.azure_token is None

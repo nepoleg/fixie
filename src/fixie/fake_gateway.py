@@ -44,6 +44,7 @@ def _parse_ticket(ticket_id: int, d: dict) -> Ticket:
         acceptance_criteria=d.get("acceptance_criteria", ""),
         repro_steps=d.get("repro_steps", ""),
         changed_date=_parse_dt(d["changed_date"], "changed_date"),
+        priority=d.get("priority", 2),
     )
 
 
@@ -185,11 +186,11 @@ class FakeGateway(AdoGateway):
     def find_tagged_tickets(self, tag: str) -> list[int]:
         tag_lower = tag.lower()
         with self._lock:
-            return sorted(
-                ticket_id
-                for ticket_id, ticket in self.tickets.items()
+            return [
+                ticket.id
+                for ticket in sorted(self.tickets.values(), key=lambda t: (t.priority, t.id))
                 if ticket.state in OPEN_STATES and any(t.lower() == tag_lower for t in ticket.tags)
-            )
+            ]
 
     def get_ticket(self, ticket_id: int) -> Ticket:
         with self._lock:
@@ -251,6 +252,16 @@ class FakeGateway(AdoGateway):
             self.comments.setdefault(ticket_id, []).append(comment)
             self._record("add_comment", {"ticket_id": ticket_id, "text": text})
             return comment
+
+    def remove_tag(self, ticket_id: int, tag: str) -> None:
+        with self._lock:
+            ticket = self.tickets[ticket_id]
+            tag_lower = tag.lower()
+            kept = tuple(t for t in ticket.tags if t.lower() != tag_lower)
+            if kept != ticket.tags:
+                self._tick()
+                self.tickets[ticket_id] = replace(ticket, tags=kept)
+            self._record("remove_tag", {"ticket_id": ticket_id, "tag": tag})
 
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         with self._lock:

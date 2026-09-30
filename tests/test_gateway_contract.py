@@ -1,6 +1,7 @@
 import inspect
 import json
 import threading
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,6 +26,7 @@ GATEWAY_METHODS = (
     "get_builds",
     "get_branch_head",
     "add_comment",
+    "remove_tag",
     "edit_comment",
     "create_pull_request",
     "update_pull_request",
@@ -50,6 +52,20 @@ def test_fake_implements_every_method(gateway):
 def test_find_tagged_tickets_open_and_tagged_only(gateway):
     assert gateway.find_tagged_tickets("fixie") == [101, 104]
     assert gateway.find_tagged_tickets("FIXIE") == [101, 104]
+
+
+def test_find_tagged_tickets_highest_priority_first(gateway):
+    gateway.tickets[104] = replace(gateway.tickets[104], priority=1)
+    assert gateway.find_tagged_tickets("fixie") == [104, 101]
+
+
+def test_remove_tag_case_insensitive(gateway):
+    gateway.remove_tag(104, "fixie")
+    gateway.remove_tag(104, "fixie")
+    assert gateway.get_ticket(104).tags == ()
+    assert gateway.find_tagged_tickets("fixie") == [101]
+    with pytest.raises(KeyError):
+        gateway.remove_tag(999, "fixie")
 
 
 def test_get_ticket(gateway):

@@ -44,6 +44,7 @@ class Ticket:
     acceptance_criteria: str
     repro_steps: str
     changed_date: datetime
+    priority: int = 2
 
 
 @dataclass(frozen=True)

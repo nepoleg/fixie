@@ -61,3 +61,31 @@ def test_once_shuts_down_even_when_poll_once_fails(tmp_path, monkeypatch):
         main(["--once", "--fake-fixture", str(FIXTURE_PATH), "--config", str(config_path), "--env", str(env_path)])
 
     assert shutdown_calls == [True]
+
+
+def test_refresh_gradle_cache_calls_helper_and_prints_version(tmp_path, monkeypatch, capsys):
+    config_path, env_path = _write_config_and_env(tmp_path)
+    calls = []
+
+    def fake_refresh(cfg, path):
+        calls.append((cfg.gradle_ro_volume, path))
+        return "v-abc123"
+
+    monkeypatch.setattr("fixie.__main__.refresh_gradle_cache", fake_refresh)
+
+    result = main(["--refresh-gradle-cache", "modules-2", "--config", str(config_path), "--env", str(env_path)])
+
+    assert result == 0
+    assert calls == [("fixie-gradle-ro", Path("modules-2").resolve())]
+    assert capsys.readouterr().out.strip() == "v-abc123"
+
+
+def test_refresh_gradle_cache_bad_path_exits_1(tmp_path, capsys):
+    config_path, env_path = _write_config_and_env(tmp_path)
+
+    result = main(
+        ["--refresh-gradle-cache", str(tmp_path / "missing"), "--config", str(config_path), "--env", str(env_path)]
+    )
+
+    assert result == 1
+    assert capsys.readouterr().err.startswith("fixie: invalid host_modules2")

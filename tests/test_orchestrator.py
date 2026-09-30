@@ -256,7 +256,7 @@ def test_stop_keeps_volume(caplog):
     assert "orchestrator: ticket 604 classified stop" in caplog.text
 
 
-def test_unauthorized_tagger_commented_once(caplog):
+def test_unauthorized_tagger_tag_removed_and_commented_once(caplog):
     gw = FakeGateway(FIXTURE_PATH, OWNER)
     fakes = Fakes()
     orch = _make_orch(gw, SETTINGS, fakes)
@@ -271,7 +271,10 @@ def test_unauthorized_tagger_commented_once(caplog):
     assert len(comments_602) == 1
     assert is_bot_signed(comments_602[0].text)
     assert "fixie-unauthorized" in comments_602[0].text
-    assert "orchestrator: ticket 602 tagged by non-allowlisted user, skipped" in caplog.text
+    assert "removed the tag" in comments_602[0].text
+    assert "fixie" not in gw.get_ticket(602).tags
+    assert 602 not in gw.find_tagged_tickets("fixie")
+    assert "orchestrator: ticket 602 tagged by non-allowlisted user, tag removed" in caplog.text
 
 
 def test_second_stop_check_skips_run_after_mirror_refresh(caplog):

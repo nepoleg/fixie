@@ -23,6 +23,7 @@ AND [System.State] IN (
           {states}
       )
 AND [System.Tags] CONTAINS '{tag}'
+ORDER BY [Microsoft.VSTS.Common.Priority] ASC, [System.Id] ASC
 """
 
 
@@ -31,7 +32,7 @@ class AdoGateway(ABC):
 
     @abstractmethod
     def find_tagged_tickets(self, tag: str) -> list[int]:
-        """Return ids of open tickets tagged with tag, case-insensitive, ascending."""
+        """Return ids of open tickets tagged with tag, case-insensitive, highest priority first, then by id."""
 
     @abstractmethod
     def get_ticket(self, ticket_id: int) -> Ticket:
@@ -76,6 +77,10 @@ class AdoGateway(ABC):
     @abstractmethod
     def add_comment(self, ticket_id: int, text: str) -> Comment:
         """Add a comment to the ticket and return it."""
+
+    @abstractmethod
+    def remove_tag(self, ticket_id: int, tag: str) -> None:
+        """Remove tag from the ticket, case-insensitive; no-op if absent, raises KeyError if the ticket is unknown."""
 
     @abstractmethod
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
