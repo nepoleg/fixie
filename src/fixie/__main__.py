@@ -6,6 +6,8 @@ import logging
 import sys
 from pathlib import Path
 
+from fixie.ado_gateway import RealAdoGateway
+from fixie.dry_run import DryRunGateway, dry_run_orchestrator
 from fixie.fake_gateway import FakeGateway
 from fixie.helper import HelperConfig, HelperError, refresh_gradle_cache
 from fixie.model import Identity
@@ -20,6 +22,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--config", type=Path, default=Path("config.toml"), help="path to config.toml")
     parser.add_argument("--env", type=Path, default=Path(".env"), help="path to the .env secrets file")
     parser.add_argument(
+        "--dry-run", type=Path, metavar="OUT_DIR",
+        help="real ADO reads, writes only logged, no containers; input files are saved to OUT_DIR/<ticket id>",
+    )
+    parser.add_argument(
         "--refresh-gradle-cache", type=Path, metavar="MODULES2",
         help="copy a local Gradle modules-2 folder into the shared read-only cache volume, then exit",
     )
@@ -30,10 +36,6 @@ def main(argv: list[str] | None = None) -> int:
     """Run fixie's orchestrator from the command line; returns the process exit code."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     args = _parse_args(argv)
-
-    if args.fake_fixture is None and args.refresh_gradle_cache is None:
-        print("fixie: real ADO gateway not implemented yet, use --fake-fixture <path>", file=sys.stderr)
-        return 2
 
     try:
         settings = load_settings(args.config, args.env)
@@ -49,13 +51,23 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         return 0
 
-    try:
-        gw = FakeGateway(args.fake_fixture, Identity("fixie", settings.owner_email))
-    except (OSError, ValueError) as exc:
-        print(f"fixie: cannot load fixture {args.fake_fixture}: {exc}", file=sys.stderr)
+    owner = Identity("fixie", settings.owner_email)
+    if args.fake_fixture is not None:
+        try:
+            gw = FakeGateway(args.fake_fixture, owner)
+        except (OSError, ValueError) as exc:
+            print(f"fixie: cannot load fixture {args.fake_fixture}: {exc}", file=sys.stderr)
+            return 2
+    elif settings.azure_token is None:
+        print("fixie: AZURE_TOKEN missing in .env", file=sys.stderr)
         return 2
+    else:
+        gw = RealAdoGateway(settings.ado_org_url, settings.ado_project, settings.ado_repo, settings.azure_token)
 
-    orch = Orchestrator(gw, settings)
+    if args.dry_run is not None:
+        orch = dry_run_orchestrator(DryRunGateway(gw, owner), settings, args.dry_run.resolve())
+    else:
+        orch = Orchestrator(gw, settings)
 
     if args.once:
         try:

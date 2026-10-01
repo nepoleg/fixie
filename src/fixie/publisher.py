@@ -8,7 +8,8 @@ from datetime import UTC
 from urllib.parse import quote
 
 from fixie.allowlist import is_owner
-from fixie.gateway import AdoGateway
+from fixie.events import threads_with_new_comments
+from fixie.gateway import BEFORE_WORKING_STATES, WORKING_STATE, AdoGateway
 from fixie.helper import MIRROR_LOCK, HelperConfig, HelperError, import_and_push
 from fixie.model import BOT_SIGN, FixieStatus, RunStatus, TicketSnapshot
 from fixie.render import parse_base_branch
@@ -71,14 +72,25 @@ def _pr_url(settings: Settings, pr_id: int) -> str:
 
 
 def mark_run_started(
-    gateway: AdoGateway, settings: Settings, ticket_id: int, status: FixieStatus | None
+    gateway: AdoGateway,
+    settings: Settings,
+    ticket_id: int,
+    status: FixieStatus | None,
+    ticket_state: str | None = None,
 ) -> FixieStatus:
-    """Bump attempts and record this run's start, using the first status write's ADO time as the clock."""
+    """Bump attempts and record this run's start, using the first status write's ADO time as the clock.
+
+    A ticket not yet in development is moved to the working state, recorded in the status first.
+    """
     base = status or FixieStatus()
-    bumped = replace(base, attempts=base.attempts + 1)
+    move = ticket_state in BEFORE_WORKING_STATES
+    bumped = replace(base, attempts=base.attempts + 1, state=WORKING_STATE if move else base.state)
     comment = _write_status(gateway, settings, ticket_id, bumped)
     started = replace(bumped, run_started=comment.modified_date)
     _write_status(gateway, settings, ticket_id, started)
+    if move:
+        gateway.set_state(ticket_id, WORKING_STATE)
+        logger.info(f"publisher: ticket {ticket_id} moved {ticket_state} -> {WORKING_STATE}")
     logger.info(f"publisher: ticket {ticket_id} run started {started.run_started.isoformat()}")
     return started
 
@@ -96,6 +108,27 @@ def record_give_up(gateway: AdoGateway, settings: Settings, ticket_id: int, stat
     gave_up = replace(status, result=RunStatus.GAVE_UP)
     _write_status(gateway, settings, ticket_id, gave_up)
     return gave_up
+
+
+def _reply_to_threads(gateway, settings, snapshot, status, pr_id, result, marker) -> None:
+    thread_ids = threads_with_new_comments(snapshot, status.last_finished_run_started, settings.owner_email)
+    if not thread_ids:
+        return
+    replied = {
+        t.id
+        for t in gateway.get_threads(pr_id)
+        if any(is_owner(c.author, settings.owner_email) and is_bot_signed(c.content) and marker in c.content
+               for c in t.comments)
+    }
+    parts = [f"{BOT_SIGN} fixie: {_LABELS[result.status]}", _redact(result.summary, settings)]
+    if result.questions:
+        parts.append("\n".join(f"- {_redact(q, settings)}" for q in result.questions))
+    parts.append(f"`{marker}`")
+    text = "\n\n".join(parts)
+    for thread_id in thread_ids:
+        if thread_id not in replied:
+            gateway.reply_to_thread(pr_id, thread_id, text)
+            logger.info(f"publisher: ticket {snapshot.ticket.id} replied in PR {pr_id} thread {thread_id}")
 
 
 def publish(
@@ -173,6 +206,9 @@ def publish(
             lines.append(f'<p>PR: <a href="{url}">{url}</a></p>')
         lines.append(f"<p>Run <code>{marker}</code></p>")
         gateway.add_comment(ticket_id, "\n".join(lines))
+
+    if pr is not None and snapshot.pull_request is not None and pr.id == snapshot.pull_request.id:
+        _reply_to_threads(gateway, settings, snapshot, status, pr.id, result, marker)
 
     name = f"fixie-{ticket_id}-{status.run_started.astimezone(UTC):%Y%m%dT%H%M%SZ}.jsonl.gz"
     if outcome.session_log is None:

@@ -127,6 +127,7 @@ Tasks are ordered. Tasks 1–16 need no ADO credentials. See `spec.md` for the d
 ### 17. Real Claude
 - Run with the real Claude (OAuth token) on a small toy repo.
 - **Done when:** a toy ticket produces a sensible commit and `result.json`.
+- Run: `$env:FIXIE_LIVE='1'; pytest tests/test_real_claude.py` (uses `CLAUDE_CODE_OAUTH_TOKEN` from `.env`, firewall on).
 
 ### 18. Real ADO gateway, dry-run
 - Implement the interface with the Azure DevOps Python lib.
@@ -138,13 +139,32 @@ Tasks are ordered. Tasks 1–16 need no ADO credentials. See `spec.md` for the d
   - `WorkItemUpdate.revised_date` is `9999-01-01` on the latest revision; take the time from the new value of `System.ChangedDate` in that update.
   - WIQL `CONTAINS` on `System.Tags` matches substrings (`fixie` matches `fixie-2`); re-filter for an exact tag client-side.
 - **Done when:** the dry-run log shows the correct classification and input files for the test ticket.
+- Run: `python -m fixie --once --dry-run <out dir>`. Token scopes: see "Tokens and secrets" in `spec.md`.
 
 ### 19. First live runs
 - Enable writes on the test ticket, then run on a real, simple EETS ticket.
 - **Done when:** fixie opens a PR, reacts to a review comment, and cleans up after merge.
 
+## Remaining spec gaps
+
+### 20. Periodic Gradle cache refresh
+- The orchestrator refreshes `fixie-gradle-ro` from the owner's `modules-2` on a schedule (e.g. daily), only while no ticket runs.
+- Host path and interval come from `config.toml`.
+- **Done when:** a test shows the refresh runs when idle, waits while a ticket runs, and never runs twice at once.
+
+### 21. Spec sync: unauthorized tickets
+- `spec.md` says fixie posts one comment and skips; the code also removes the `fixie` tag. Update the spec to match.
+- **Done when:** `spec.md` describes the untagging.
+
+### 22. CI protection for fixie branches
+- ADO setup, no code: PR builds for `fixie/*` get no deploy credentials or secrets, and branch policy blocks pipeline definition changes from `fixie/*`.
+- **Done when:** the settings are in place and written down in `spec.md`.
+
+### 23. Ticket state changes
+- Done for the start: fixie moves a ticket to Developing when a run starts (see `spec.md`, "Ticket as memory").
+- Open: whether fixie also sets a state later (e.g. Code Review when the PR is created).
+
 ## Open questions
-- Which ticket states fixie acts on, and whether it changes the state itself.
 - How a ticket names another base branch: a field, or a line in the description.
 - PR title format, draft or ready, default reviewers.
 - Values for poll interval, parallel runs, retry count, run timeout.

@@ -9,6 +9,11 @@ if [ "${FIXIE_FAKE_COMMIT:-}" != "0" ]; then
   git commit -q -m "fake: update FIXIE_FAKE.md"
 fi
 
+if [ "${FIXIE_FAKE_REWRITE:-}" = "1" ]; then
+  git reset -q --soft HEAD~2
+  git commit -q -m "fake: squashed"
+fi
+
 if [ "${FIXIE_FAKE_RESULT:-}" != "0" ]; then
   printf '{"status": "done", "summary": "Fake agent appended a line to FIXIE_FAKE.md.", "questions": []}\n' >~/out/result.json
 fi

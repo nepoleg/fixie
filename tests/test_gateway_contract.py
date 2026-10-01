@@ -27,6 +27,8 @@ GATEWAY_METHODS = (
     "get_branch_head",
     "add_comment",
     "remove_tag",
+    "set_state",
+    "reply_to_thread",
     "edit_comment",
     "create_pull_request",
     "update_pull_request",

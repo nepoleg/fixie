@@ -457,3 +457,62 @@ def test_publish_rejects_bad_args(bad):
     with pytest.raises(ValueError):
         publish(gw, SETTINGS, snapshot, status, outcome, push=_fake_push([]), mirror_lock=LOCK)
     assert gw.writes == []
+
+
+def test_mark_run_started_moves_new_ticket_to_developing():
+    gw = _gateway()
+    gw.tickets[501] = replace(gw.tickets[501], state="New")
+    status = mark_run_started(gw, SETTINGS, 501, None, "New")
+    assert status.state == "Developing"
+    assert gw.get_ticket(501).state == "Developing"
+    methods = [w[0] for w in gw.writes]
+    assert methods.index("set_state") > methods.index("add_comment")
+    assert _status(gw, 501).state == "Developing"
+
+
+@pytest.mark.parametrize("state", ["Developing", "Code Review"])
+def test_mark_run_started_leaves_later_states(state):
+    gw = _gateway()
+    status = mark_run_started(gw, SETTINGS, 501, None, state)
+    assert status.state is None
+    assert "set_state" not in [w[0] for w in gw.writes]
+
+
+def test_own_state_move_is_not_an_event():
+    from fixie.events import collect_events
+
+    gw = _gateway()
+    gw.tickets[501] = replace(gw.tickets[501], state="New")
+    status = mark_run_started(gw, SETTINGS, 501, None, "New")
+    snapshot = load_snapshot(gw, 501)
+    assert collect_events(snapshot, status, status.run_started, OWNER_EMAIL, ()) == ()
+
+
+def _thread(thread_id, author, text, when):
+    from fixie.model import PrComment, PrThread
+
+    comment = PrComment(1, author, text, when, when, "text")
+    return PrThread(thread_id, "active", None, None, (comment,), when, when)
+
+
+def test_publish_replies_once_in_threads_with_new_comments():
+    gw = _gateway()
+    alice = Identity("Alice", "alice@example.com")
+    old = datetime(2026, 2, 1, tzinfo=UTC)
+    previous = FixieStatus(last_finished_run_started=datetime(2026, 2, 15, tzinfo=UTC), pr_id=9)
+    gw.threads[9] = [
+        _thread(70, alice, "please rename", datetime(2026, 2, 25, tzinfo=UTC)),
+        _thread(71, alice, "old remark", old),
+        _thread(72, OWNER, f"{BOT_SIGN} fixie: done", datetime(2026, 2, 26, tzinfo=UTC)),
+    ]
+    status = mark_run_started(gw, SETTINGS, 502, previous)
+    snapshot = load_snapshot(gw, 502)
+    outcome = _outcome(ticket_id="502", summary="Renamed it")
+
+    publish(gw, SETTINGS, snapshot, status, outcome, push=_fake_push([]), mirror_lock=LOCK)
+    publish(gw, SETTINGS, snapshot, status, outcome, push=_fake_push([]), mirror_lock=LOCK)
+
+    replies = [w[1] for w in gw.writes if w[0] == "reply_to_thread"]
+    assert [(r["pr_id"], r["thread_id"]) for r in replies] == [(9, 70)]
+    text = replies[0]["text"]
+    assert text.startswith(f"{BOT_SIGN} fixie: done") and "Renamed it" in text and "fixie-run:" in text

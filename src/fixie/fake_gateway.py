@@ -263,6 +263,46 @@ class FakeGateway(AdoGateway):
                 self.tickets[ticket_id] = replace(ticket, tags=kept)
             self._record("remove_tag", {"ticket_id": ticket_id, "tag": tag})
 
+    def set_state(self, ticket_id: int, state: str) -> None:
+        with self._lock:
+            ticket = self.tickets[ticket_id]
+            timestamp = self._tick()
+            if ticket.state != state:
+                self.updates.setdefault(ticket_id, []).append(
+                    TicketUpdate(
+                        id=len(self.updates.get(ticket_id, [])) + 1,
+                        revised_by=self.owner,
+                        revised_date=timestamp,
+                        tags_added=(),
+                        tags_removed=(),
+                        state_from=ticket.state,
+                        state_to=state,
+                    )
+                )
+                self.tickets[ticket_id] = replace(ticket, state=state)
+            self._record("set_state", {"ticket_id": ticket_id, "state": state})
+
+    def reply_to_thread(self, pr_id: int, thread_id: int, text: str) -> PrComment:
+        with self._lock:
+            threads = self.threads.get(pr_id)
+            if threads is None:
+                raise KeyError(pr_id)
+            for i, thread in enumerate(threads):
+                if thread.id == thread_id:
+                    timestamp = self._tick()
+                    reply = PrComment(
+                        id=len(thread.comments) + 1,
+                        author=self.owner,
+                        content=text,
+                        published_date=timestamp,
+                        last_updated_date=timestamp,
+                        comment_type="text",
+                    )
+                    threads[i] = replace(thread, comments=thread.comments + (reply,), last_updated_date=timestamp)
+                    self._record("reply_to_thread", {"pr_id": pr_id, "thread_id": thread_id, "text": text})
+                    return reply
+            raise KeyError(thread_id)
+
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         with self._lock:
             if ticket_id not in self.tickets:

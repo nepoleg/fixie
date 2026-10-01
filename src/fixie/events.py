@@ -34,6 +34,20 @@ def load_snapshot(gateway: AdoGateway, ticket_id: int) -> TicketSnapshot:
     )
 
 
+def threads_with_new_comments(snapshot: TicketSnapshot, since: datetime | None, owner_email: str) -> tuple[int, ...]:
+    """Ids of PR threads with a non-fixie text comment published since `since`."""
+    return tuple(
+        thread.id
+        for thread in snapshot.threads
+        if any(
+            c.comment_type == "text"
+            and (since is None or c.published_date >= since)
+            and not (is_owner(c.author, owner_email) and is_bot_signed(c.content))
+            for c in thread.comments
+        )
+    )
+
+
 def collect_events(
     snapshot: TicketSnapshot,
     status: FixieStatus | None,

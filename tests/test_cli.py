@@ -11,23 +11,28 @@ CONFIG_PATH = Path(__file__).parents[1] / "config.toml"
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ado" / "orchestrator.json"
 
 
-def test_main_without_fake_fixture_exits_2(capsys):
-    assert main([]) == 2
-    assert "real ADO gateway not implemented yet" in capsys.readouterr().err
-
-
-def test_python_m_fixie_without_fake_fixture_exits_2():
-    result = subprocess.run([sys.executable, "-m", "fixie"], capture_output=True, text=True)
-    assert result.returncode == 2
-    assert "real ADO gateway not implemented yet" in result.stderr
-
-
 def _write_config_and_env(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(CONFIG_PATH.read_text(encoding="utf-8"), encoding="utf-8")
     env_path = tmp_path / ".env"
     env_path.write_text("FIXIE_OWNER_EMAIL=owner@example.com\nFIXIE_STATE_SECRET=s\n", encoding="utf-8")
     return config_path, env_path
+
+
+def test_real_gateway_without_azure_token_exits_2(tmp_path, capsys):
+    config_path, env_path = _write_config_and_env(tmp_path)
+    assert main(["--once", "--config", str(config_path), "--env", str(env_path)]) == 2
+    assert "AZURE_TOKEN missing" in capsys.readouterr().err
+
+
+def test_python_m_fixie_without_azure_token_exits_2(tmp_path):
+    config_path, env_path = _write_config_and_env(tmp_path)
+    result = subprocess.run(
+        [sys.executable, "-m", "fixie", "--once", "--config", str(config_path), "--env", str(env_path)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 2
+    assert "AZURE_TOKEN missing" in result.stderr
 
 
 def test_missing_fake_fixture_path_exits_2_not_traceback(tmp_path, capsys):

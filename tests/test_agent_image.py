@@ -307,6 +307,40 @@ def test_start_continues_existing_fixie_branch(mirror, ticket_volume, tmp_path):
     assert _bundle_commits(host_bare, out_dir / "branch.bundle", "fixie/77") == (2, "fake: update FIXIE_FAKE.md")
 
 
+def test_rewritten_history_kept_as_new_commit(mirror, ticket_volume, tmp_path):
+    mirror_vol, host_bare = mirror
+    env = {**TICKET_ENV, "TICKET_ID": "77", "SESSION_ID": "3f1c2a9e-0000-4000-8000-000000000077", "FIXIE_FAKE_REWRITE": "1"}
+    rc, _out, err, out_dir = _run_ticket(mirror_vol, ticket_volume, env, INPUT, tmp_path)
+    assert rc == 0, err
+    assert "run-ticket: agent rewrote history, kept its tree as a new commit" in err
+    assert _bundle_commits(host_bare, out_dir / "branch.bundle", "fixie/77") == (2, "fake: squashed")
+    files = _git_in(mirror_vol, ticket_volume, "cd ~/work && git ls-tree --name-only fixie/77 && git status --porcelain")
+    assert files.stdout.split() == ["FIXIE_FAKE.md", "README.md", "existing.txt"]
+
+
+def _git_in(mirror_vol, ticket_vol, script):
+    return _run(
+        "docker", "run", "--rm", "--network", "none", "-e", "FIXIE_FIREWALL=off", *FLAGS,
+        "-v", f"{mirror_vol}:/mirror:ro", "-v", f"{ticket_vol}:/home/agent", "fixie-agent:latest", "bash", "-c", script,
+    )
+
+
+def test_resume_resets_rewritten_branch_to_origin(mirror, ticket_volume, tmp_path):
+    mirror_vol, host_bare = mirror
+    env = {**TICKET_ENV, "TICKET_ID": "77", "SESSION_ID": "3f1c2a9e-0000-4000-8000-000000000077"}
+    rc, _out, err, _ = _run_ticket(mirror_vol, ticket_volume, {**env, "FIXIE_FAKE_COMMIT": "0"}, INPUT, tmp_path)
+    assert rc == 0, err
+    rewrite = _git_in(mirror_vol, ticket_volume, "cd ~/work && git reset -q --hard HEAD~1 && git commit -q --allow-empty -m rewritten")
+    assert rewrite.returncode == 0, rewrite.stderr
+
+    rc, _out, err, out_dir = _run_ticket(mirror_vol, ticket_volume, {**env, "RUN_MODE": "resume"}, INPUT, tmp_path)
+    assert rc == 0, err
+    assert "run-ticket: branch diverged from origin, reset to origin" in err
+    log = _git_in(mirror_vol, ticket_volume, "cd ~/work && git log --format=%s origin/dev..HEAD").stdout.split()
+    assert "rewritten" not in log
+    assert _bundle_commits(host_bare, out_dir / "branch.bundle", "fixie/77") == (2, "fake: update FIXIE_FAKE.md")
+
+
 def test_missing_base_branch_fails_git_setup(mirror, ticket_volume, tmp_path):
     mirror_vol, _host_bare = mirror
     env = {**TICKET_ENV, "BASE_BRANCH": "no-such-branch"}

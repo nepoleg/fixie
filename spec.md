@@ -23,6 +23,23 @@ Integration with Azure is powered by Azure Devops Python lib. Only tickets label
 - The owner (`FIXIE_OWNER_EMAIL`) may always trigger fixie, also when the allowlist is not empty. If the allowlist is empty, only the owner may.
 - The allowlist authorizes starting the work, not every later edit. Comments and description edits by non-allowlisted users are still passed to Claude, but marked with their author, so the risk is visible. Only allowlisted comments can be trusted as instructions.
 
+### Tokens and secrets
+All secrets are in `.env`. Give each token only the scopes listed here.
+
+| Variable | Used by | Required scopes |
+|---|---|---|
+| `AZURE_TOKEN` | Orchestrator (ADO gateway) and the git helper container | Work Items: Read & Write; Code: Read & Write; Build: Read |
+| `ADO_FEED_TOKEN` | Agent container, for Gradle dependency downloads | Packaging: Read, nothing else |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Agent container, for Claude Code | Claude OAuth token (`claude setup-token`) |
+| `FIXIE_STATE_SECRET` | Orchestrator, to sign the status comment | Any long random string, not an ADO token |
+| `FIXIE_OWNER_EMAIL` | Orchestrator, owner account and trust checks | Not a secret: the ADO email `AZURE_TOKEN` belongs to |
+
+- `AZURE_TOKEN`:
+  - Work Items: read tickets, history, comments and attachments; post and edit comments, remove the tag, attach logs, link PRs.
+  - Code: read the repo, branches, commits, PRs and PR threads; create and update PRs; clone, fetch and push `fixie/*` branches.
+  - Build: read PR validation builds, to notice failed builds.
+- `ADO_FEED_TOKEN` is the only ADO token the agent sees. It runs code from tickets, so it must never get any other scope.
+
 ## Claude integration
 Ticket execution is implemented using Claude Code running in a sandbox.
 
@@ -97,6 +114,7 @@ Ticket execution is implemented using Claude Code running in a sandbox.
 - The token is passed as an HTTP header and never stored in any git config.
 - The orchestrator checks the branch has new commits, then creates or updates the PR with the summary.
 - It links the PR to the work item and posts a bot-signed comment. For "needs info", it posts the questions instead.
+- It also replies, bot-signed, in every PR thread that got a new human comment since the last finished run. The reply carries the run marker, so a re-run never replies twice.
 - The session log is gzipped and attached to the ticket, one file per run. It may contain anything the agent read from the repo.
 
 ### Ticket as memory
@@ -112,6 +130,8 @@ Ticket execution is implemented using Claude Code running in a sandbox.
   - ticket state set by fixie
   - last seen build ID
   - attempts
+- Ticket states fixie acts on: New, Ready for Design, Designing, Ready for development, Developing, Code Review. Other states count as closed.
+- When a run starts on a ticket that is not yet in development (New, Ready for Design, Designing, Ready for development), fixie moves it to Developing. It records "Developing" in the status comment first, so its own state change is not taken as human activity. Fixie never moves a ticket back.
 - Before a run, fixie writes the run start time. After a successful publish, it copies that time to "last finished run started at" and writes the result.
 - New activity is everything after the last finished run's start time, so changes made while fixie was working are not lost.
 - A crashed run never writes the finish. The next check retries from the old time and increases attempts. After N attempts, fixie posts that it gave up and stops.

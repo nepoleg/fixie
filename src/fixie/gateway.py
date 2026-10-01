@@ -7,13 +7,16 @@ from fixie.model import (
     Build,
     Comment,
     Commit,
+    PrComment,
     PrThread,
     PullRequest,
     Ticket,
     TicketUpdate,
 )
 
-OPEN_STATES = ("New", "Ready For Design", "Designing", "Ready for Development", "Developing", "Code Review")
+OPEN_STATES = ("New", "Ready for Design", "Designing", "Ready for development", "Developing", "Code Review")
+WORKING_STATE = "Developing"
+BEFORE_WORKING_STATES = OPEN_STATES[: OPEN_STATES.index(WORKING_STATE)]
 
 TAGGED_TICKETS_WIQL = """
 SELECT [System.Id], [System.Title]
@@ -81,6 +84,14 @@ class AdoGateway(ABC):
     @abstractmethod
     def remove_tag(self, ticket_id: int, tag: str) -> None:
         """Remove tag from the ticket, case-insensitive; no-op if absent, raises KeyError if the ticket is unknown."""
+
+    @abstractmethod
+    def set_state(self, ticket_id: int, state: str) -> None:
+        """Set the ticket's state; raises KeyError if the ticket is unknown."""
+
+    @abstractmethod
+    def reply_to_thread(self, pr_id: int, thread_id: int, text: str) -> PrComment:
+        """Add a reply to a pull request thread and return it; raises KeyError if unknown."""
 
     @abstractmethod
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:

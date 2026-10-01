@@ -60,7 +60,8 @@ if ! (
     git -C ~/work checkout -q "fixie/$TICKET_ID"
     if git -C ~/work rev-parse --verify -q "origin/fixie/$TICKET_ID" >/dev/null; then
       if ! git -C ~/work merge -q --ff-only "origin/fixie/$TICKET_ID"; then
-        echo "run-ticket: branch diverged from origin, left to agent" >&2
+        git -C ~/work reset -q --hard "origin/fixie/$TICKET_ID"
+        echo "run-ticket: branch diverged from origin, reset to origin" >&2
       fi
     fi
   fi
@@ -69,6 +70,7 @@ if ! (
 fi
 
 cd ~/work
+START_SHA=$(git rev-parse HEAD)
 PROMPT='Your ticket is in ~/in/ticket.md. Events since your last run are in ~/in/new.json (an empty list on the first run). Open PR threads are in ~/in/pr.md if it exists, and attachments in ~/in/attachments. Do the work following your rules, then write ~/out/result.json.'
 
 if [ "${FIXIE_FAKE_AGENT:-}" = "1" ]; then
@@ -94,6 +96,23 @@ agent_failed=0
 if [ "$agent_rc" -ne 0 ]; then
   echo "run-ticket: agent exited with $agent_rc" >&2
   agent_failed=1
+fi
+
+BRANCH="refs/heads/fixie/$TICKET_ID"
+if git rev-parse --verify -q "$BRANCH" >/dev/null && ! git merge-base --is-ancestor "$START_SHA" "$BRANCH"; then
+  if tree=$(git rev-parse "$BRANCH^{tree}") && start_tree=$(git rev-parse "$START_SHA^{tree}"); then
+    new=$START_SHA
+    if [ "$tree" != "$start_tree" ]; then
+      new=$(git log -1 --format=%B "$BRANCH" | git commit-tree "$tree" -p "$START_SHA") || new=
+    fi
+    if [ -n "$new" ] && git update-ref "$BRANCH" "$new"; then
+      echo "run-ticket: agent rewrote history, kept its tree as a new commit" >&2
+    else
+      echo "run-ticket: history repair failed" >&2
+    fi
+  else
+    echo "run-ticket: history repair failed" >&2
+  fi
 fi
 
 rm -f ~/out/branch.bundle ~/out/session.jsonl

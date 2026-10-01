@@ -3,8 +3,10 @@ name = "fixie"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "azure-devops>=7.1.0b4",
     "docker>=7.1,<8",
     "markdownify>=1.2.3,<1.3",
+    "msrest>=0.7.1",
     "python-dotenv>=1.2.2",
 ]
 
@@ -22,4 +24,7 @@ build-backend = "uv_build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["docker: needs a reachable Docker engine and the fixie-agent image"]
+markers = [
+    "docker: needs a reachable Docker engine and the fixie-agent image",
+    "live: uses the real Claude (FIXIE_LIVE=1 and CLAUDE_CODE_OAUTH_TOKEN in .env)",
+]

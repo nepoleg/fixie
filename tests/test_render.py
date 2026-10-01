@@ -277,3 +277,12 @@ def test_lone_cr_cannot_escape_the_blockquote(tmp_path):
     pr_text = (target / "pr.md").read_text(encoding="utf-8")
     assert "> ### Fake <alice@example.com>, 2026-03-01T10:00:00Z" in pr_text
     assert not any(line.startswith("### Fake <alice@example.com>") for line in pr_text.splitlines())
+
+
+def test_markdown_field_kept_verbatim_with_image_rewrite(tmp_path):
+    gw = _gw()
+    md = "Steps:\n\n```\n# a > b\n```\n\n- one *two*\n\n![shot](https://fake.ado/attachments/a401?fileName=image.png)"
+    gw.tickets[401] = replace(gw.tickets[401], description=md, markdown_fields=frozenset({"description"}))
+    _render(gw, 401, tmp_path / "in")
+    text = (tmp_path / "in" / "ticket.md").read_text(encoding="utf-8")
+    assert "> Steps:\n>\n> ```\n> # a > b\n> ```\n>\n> - one *two*\n>\n> ![shot](attachments/image.png)" in text

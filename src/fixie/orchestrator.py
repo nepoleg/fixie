@@ -142,7 +142,7 @@ class Orchestrator:
         tid = snapshot.ticket.id
         tmp: Path | None = None
         try:
-            started = publisher.mark_run_started(self.gateway, self.settings, tid, status)
+            started = publisher.mark_run_started(self.gateway, self.settings, tid, status, snapshot.ticket.state)
             tmp = Path(tempfile.mkdtemp(prefix=f"fixie-in-{tid}-"))
             write_input(self.gateway, snapshot, classification.events, self.settings, tmp)
 

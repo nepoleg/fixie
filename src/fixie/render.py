@@ -20,6 +20,7 @@ _BASE_LINE_RE = re.compile(r"\s*base(?:\s+branch)?\s*:\s*(\S+)\s*", re.IGNORECAS
 _VALID_BRANCH_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 _IMG_SRC_RE = re.compile(r"(<img\b[^>]*?\bsrc\s*=\s*)([\"'])(.*?)\2", re.IGNORECASE | re.DOTALL)
 _SANITIZE_RE = re.compile(r"[^A-Za-z0-9._-]")
+_MD_IMG_RE = re.compile(r"(!\[[^\]]*\]\()([^)\s]+)")
 
 
 def parse_base_branch(description: str, default: str) -> str:
@@ -95,6 +96,14 @@ def _local_attachment_names(gateway: AdoGateway, snapshot: TicketSnapshot) -> tu
     return named, by_url
 
 
+def _md_native(text: str, image_map: dict[str, str]) -> str:
+    def rewrite(match: re.Match) -> str:
+        local = image_map.get(_key(match.group(2)))
+        return match.group(0) if local is None else f"{match.group(1)}attachments/{local}"
+
+    return _MD_IMG_RE.sub(rewrite, text).replace("\r\n", "\n").strip()
+
+
 def _md(text: str, image_map: dict[str, str]) -> str:
     def rewrite(match: re.Match) -> str:
         src = match.group(3)
@@ -139,12 +148,13 @@ def _ticket_fields(snapshot: TicketSnapshot, settings: Settings) -> str:
 def _ticket_sections(snapshot: TicketSnapshot, image_map: dict[str, str]) -> list[str]:
     t = snapshot.ticket
     blocks = []
-    for heading, value in (
-        ("Description", t.description),
-        ("Acceptance criteria", t.acceptance_criteria),
-        ("Repro steps", t.repro_steps),
+    for heading, field_name in (
+        ("Description", "description"),
+        ("Acceptance criteria", "acceptance_criteria"),
+        ("Repro steps", "repro_steps"),
     ):
-        rendered = _md(value, image_map)
+        value = getattr(t, field_name)
+        rendered = _md_native(value, image_map) if field_name in t.markdown_fields else _md(value, image_map)
         if rendered:
             blocks.append(f"## {heading}")
             blocks.append(_quote(rendered))

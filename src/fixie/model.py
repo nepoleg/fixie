@@ -45,6 +45,7 @@ class Ticket:
     repro_steps: str
     changed_date: datetime
     priority: int = 2
+    markdown_fields: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
