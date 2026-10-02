@@ -54,10 +54,6 @@ class AdoGateway(ABC):
         """Return the ticket's attachments."""
 
     @abstractmethod
-    def download_attachment(self, url: str) -> bytes:
-        """Return the attachment's content; raises KeyError if unknown."""
-
-    @abstractmethod
     def get_pull_request(self, pr_id: int) -> PullRequest:
         """Return the pull request; raises KeyError if unknown."""
 

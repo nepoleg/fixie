@@ -210,11 +210,13 @@ def publish(
     if pr is not None and snapshot.pull_request is not None and pr.id == snapshot.pull_request.id:
         _reply_to_threads(gateway, settings, snapshot, status, pr.id, result, marker)
 
-    name = f"fixie-{ticket_id}-{status.run_started.astimezone(UTC):%Y%m%dT%H%M%SZ}.jsonl.gz"
+    stem = f"fixie-{ticket_id}-{status.run_started.astimezone(UTC):%Y%m%dT%H%M%SZ}"
     if outcome.session_log is None:
         logger.info(f"publisher: ticket {ticket_id} no session log, not attached")
-    elif not any(a.name == name for a in gateway.get_attachments(ticket_id)):
-        gateway.attach_file(ticket_id, name, gzip.compress(_redact_bytes(outcome.session_log, settings), mtime=0))
+    for name, data in ((f"{stem}.jsonl.gz", outcome.session_log), (f"{stem}.gradle.log.gz", outcome.gradle_log)):
+        # ponytail: logs are attached whole; cap or truncate if ADO's attachment size limit is ever hit.
+        if data is not None and not any(a.name == name for a in gateway.get_attachments(ticket_id)):
+            gateway.attach_file(ticket_id, name, gzip.compress(_redact_bytes(data, settings), mtime=0))
 
     finished = replace(
         status,

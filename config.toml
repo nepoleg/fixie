@@ -7,7 +7,7 @@ default_base_branch = "dev"
 allowlist = []
 
 [claude]
-model = "haiku"
+model = "sonnet"
 
 [docker]
 image = "fixie-agent"

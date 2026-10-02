@@ -62,7 +62,7 @@ class Fakes:
             self.started.set()
             assert self.gate.wait(10), f"gate never opened for ticket {ticket_id}"
         names = sorted(p.name for p in input_dir.iterdir())
-        new_json_text = (input_dir / "new.json").read_text(encoding="utf-8")
+        new_json_text = (input_dir / "ticket.json").read_text(encoding="utf-8")
         self.run_calls.append((ticket_id, mode, base_branch, input_dir, names, new_json_text))
         if ticket_id in self.errors:
             raise self.errors[ticket_id]
@@ -124,8 +124,8 @@ def test_new_ticket_runs_start_and_publishes():
     _, mode, base_branch, input_dir, names, new_json_text = calls[0]
     assert mode == "start"
     assert base_branch == "dev"
-    assert names == ["attachments", "new.json", "ticket.md"]
-    assert json.loads(new_json_text) == []
+    assert names == ["ticket.json"]
+    assert json.loads(new_json_text)["events"] == []
     assert not input_dir.exists()
 
     published = fakes.publish_calls[601]
@@ -151,7 +151,8 @@ def test_resume_runs_resume_with_events():
     calls = [c for c in fakes.run_calls if c[0] == "605"]
     assert len(calls) == 1
     assert calls[0][1] == "resume"
-    assert "Please add tests" in calls[0][5]
+    events = json.loads(calls[0][5])["events"]
+    assert [(e["type"], e["comment"], e["allowlisted"]) for e in events] == [("ticket_comment", 2, False)]
 
 
 def test_retry_runs_resume():
@@ -239,6 +240,20 @@ def test_clean_up_deletes_volume_for_closed_ticket(caplog):
     assert fakes.delete_calls == ["603"]
     assert not any(c[0] == "603" for c in fakes.run_calls)
     assert "orchestrator: ticket 603 volume deleted" in caplog.text
+
+
+def test_deleted_ticket_volume_deleted(caplog):
+    gw = FakeGateway(FIXTURE_PATH, OWNER)
+    fakes = Fakes(volumes={"999"})
+    orch = _make_orch(gw, SETTINGS, fakes)
+
+    with caplog.at_level(logging.INFO, logger="fixie.orchestrator"):
+        concurrent.futures.wait(orch.poll_once())
+    orch.shutdown()
+
+    assert fakes.delete_calls == ["999"]
+    assert "orchestrator: ticket 999 deleted in ADO, volume deleted" in caplog.text
+    assert "poll failed" not in caplog.text
 
 
 def test_stop_keeps_volume(caplog):
@@ -364,12 +379,20 @@ def test_ticket_poll_error_skips_ticket(caplog):
     gw = FakeGateway(FIXTURE_PATH, OWNER)
     fakes = Fakes(volumes={"999"})
     orch = _make_orch(gw, SETTINGS, fakes)
+    real_get_ticket = gw.get_ticket
 
+    def flaky(ticket_id):
+        if ticket_id == 999:
+            raise RuntimeError("ADO down")
+        return real_get_ticket(ticket_id)
+
+    gw.get_ticket = flaky
     with caplog.at_level(logging.WARNING, logger="fixie.orchestrator"):
         concurrent.futures.wait(orch.poll_once())
     orch.shutdown()
 
-    assert "orchestrator: ticket 999 poll failed: KeyError" in caplog.text
+    assert "orchestrator: ticket 999 poll failed: RuntimeError" in caplog.text
+    assert fakes.delete_calls == []
     assert any(c[0] == "601" for c in fakes.run_calls)
 
 

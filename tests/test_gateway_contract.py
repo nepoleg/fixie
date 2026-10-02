@@ -19,7 +19,6 @@ GATEWAY_METHODS = (
     "get_updates",
     "get_comments",
     "get_attachments",
-    "download_attachment",
     "get_pull_request",
     "find_pull_requests",
     "get_threads",
@@ -102,13 +101,10 @@ def test_get_comments_oldest_first_with_modifier(gateway):
     assert c12.modified_date > c12.created_date
 
 
-def test_attachments_downloadable(gateway):
+def test_attachments_listed(gateway):
     attachments = gateway.get_attachments(101)
     assert len(attachments) == 1
     assert attachments[0].name == "shot.png"
-    assert gateway.download_attachment(attachments[0].url) == b"hello"
-    with pytest.raises(KeyError):
-        gateway.download_attachment("https://fake.ado/attachments/nope")
 
 
 def test_find_pull_requests_by_branch(gateway):
@@ -154,7 +150,6 @@ def test_reads_record_no_writes(gateway):
     gateway.get_updates(101)
     gateway.get_comments(101)
     gateway.get_attachments(101)
-    gateway.download_attachment("https://fake.ado/attachments/a1")
     gateway.get_pull_request(7)
     gateway.find_pull_requests("fixie/101")
     gateway.get_threads(7)
@@ -221,10 +216,10 @@ def test_link_work_item_idempotent(gateway):
     assert len(link_writes) == 2
 
 
-def test_attach_file_listed_and_downloadable(gateway):
+def test_attach_file_listed(gateway):
     a = gateway.attach_file(101, "log.gz", b"\x1f\x8b")
     assert a in gateway.get_attachments(101)
-    assert gateway.download_attachment(a.url) == b"\x1f\x8b"
+    assert gateway.blobs[a.url] == b"\x1f\x8b"
 
 
 def test_attach_file_id_survives_blob_removal(gateway):
@@ -235,7 +230,7 @@ def test_attach_file_id_survives_blob_removal(gateway):
     a3 = gateway.attach_file(101, "three.bin", b"3")
 
     assert a3.id not in (a1.id, a2.id)
-    assert gateway.download_attachment(a3.url) == b"3"
+    assert gateway.blobs[a3.url] == b"3"
 
 
 def test_write_times_strictly_increase(gateway):

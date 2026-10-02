@@ -1,8 +1,8 @@
 #!/bin/bash
-# Locks outbound traffic to the Anthropic API and dependency feeds, self-tests, then returns.
+# Locks outbound traffic to the Anthropic API, ADO (read-only token) and dependency feeds, self-tests, then returns.
 set -euo pipefail
 
-HOSTS=(api.anthropic.com pkgs.dev.azure.com europe-maven.pkg.dev)
+HOSTS=(api.anthropic.com dev.azure.com pkgs.dev.azure.com europe-maven.pkg.dev)
 IPV4_RE='^([0-9]{1,3}\.){3}[0-9]{1,3}$'
 
 ALL_IPS=()

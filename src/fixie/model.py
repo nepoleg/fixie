@@ -137,6 +137,10 @@ class Event:
     time: datetime
     content: str
     allowlisted: bool
+    pr: int | None = None
+    thread: int | None = None
+    comment: int | None = None
+    build: int | None = None
 
 
 @dataclass(frozen=True)
@@ -186,3 +190,4 @@ class TicketSnapshot:
 class Classification:
     action: Action
     events: tuple[Event, ...] = ()
+    since: datetime | None = None

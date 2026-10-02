@@ -67,13 +67,17 @@ def collect_events(
         return is_allowed(author, allowlist, owner_email)
 
     recorded_head = status.head if status is not None else None
+    pr_id = snapshot.pull_request.id if snapshot.pull_request is not None else None
     events: list[Event] = []
 
     for comment in snapshot.comments:
         author = comment.modified_by
         if in_window(comment.created_date) and not fixie_comment(author, comment.text):
             events.append(
-                Event(EventType.TICKET_COMMENT, author, comment.created_date, comment.text, allowlisted(author))
+                Event(
+                    EventType.TICKET_COMMENT, author, comment.created_date, comment.text, allowlisted(author),
+                    comment=comment.id,
+                )
             )
 
     for thread in snapshot.threads:
@@ -96,13 +100,19 @@ def collect_events(
                     pr_comment.published_date,
                     content,
                     allowlisted(pr_comment.author),
+                    pr=pr_id,
+                    thread=thread.id,
+                    comment=pr_comment.id,
                 )
             )
 
     head = snapshot.head
     if head is not None and head.sha != recorded_head and (recorded_head is not None or in_window(head.date)):
         events.append(
-            Event(EventType.PR_PUSH, head.author, head.date, f"{head.sha} {head.message}", allowlisted(head.author))
+            Event(
+                EventType.PR_PUSH, head.author, head.date, f"{head.sha} {head.message}", allowlisted(head.author),
+                pr=pr_id,
+            )
         )
 
     for build in snapshot.builds:
@@ -119,6 +129,8 @@ def collect_events(
                 build.finish_time,
                 f"Build {build.id} failed on {build.source_version}",
                 allowlisted(build.requested_for),
+                pr=pr_id,
+                build=build.id,
             )
         )
 

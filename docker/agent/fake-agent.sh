@@ -14,6 +14,11 @@ if [ "${FIXIE_FAKE_REWRITE:-}" = "1" ]; then
   git commit -q -m "fake: squashed"
 fi
 
+if [ -n "${FIXIE_FAKE_GRADLE:-}" ]; then
+  mkdir -p ~/.gradle/daemon/8.12
+  echo "$FIXIE_FAKE_GRADLE" >~/.gradle/daemon/8.12/daemon-$$.out.log
+fi
+
 if [ "${FIXIE_FAKE_RESULT:-}" != "0" ]; then
   printf '{"status": "done", "summary": "Fake agent appended a line to FIXIE_FAKE.md.", "questions": []}\n' >~/out/result.json
 fi

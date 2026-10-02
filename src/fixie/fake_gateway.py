@@ -208,10 +208,6 @@ class FakeGateway(AdoGateway):
         with self._lock:
             return list(self.attachments.get(ticket_id, []))
 
-    def download_attachment(self, url: str) -> bytes:
-        with self._lock:
-            return self.blobs[url]
-
     def get_pull_request(self, pr_id: int) -> PullRequest:
         with self._lock:
             return self.pull_requests[pr_id]

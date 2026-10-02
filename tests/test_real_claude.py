@@ -43,26 +43,10 @@ CALC_TEST = """public class CalcTest {
 README = "# Calc\n\nBuild and test:\n\n    javac -d build *.java && java -cp build CalcTest\n"
 TEST_CMD = "cd ~/work && rm -rf /tmp/b && javac -d /tmp/b *.java && java -cp /tmp/b CalcTest"
 
-TICKET = """# 9001: Calc.add returns a wrong result
-
-- Type: Bug
-- State: Active
-- Tags: fixie
-- Base branch: dev
-
-## Description
-
-> `Calc.add(2, 3)` returns `-1`, it should return `5`. Fix it and keep `CalcTest` passing.
-"""
-REVIEW = [
-    {
-        "type": "pr_comment",
-        "author": "Owner <owner@example.com>",
-        "time": "2026-09-30T10:00:00Z",
-        "content": "/Calc.java: please also add `static int multiply(int a, int b)` and a check for it in CalcTest.",
-        "allowlisted": True,
-    }
-]
+FIX = "`Calc.add(2, 3)` returns `-1`, it should return `5`. Fix it and keep `CalcTest` passing."
+MULTIPLY = FIX + "\n\nReopened: also add `static int multiply(int a, int b)` and a check for it in `CalcTest`."
+REOPEN = [{"type": "reopened", "time": "2026-09-30T10:00:00Z", "author": "owner@example.com",
+           "allowlisted": True, "detail": "Ready for testing -> Developing"}]
 
 
 @pytest.fixture(scope="module")
@@ -113,11 +97,19 @@ def ticket():
     runner.TICKET_VOLUME_PREFIX = old
 
 
-def _input(tmp_path, new_events):
+def _input(tmp_path, tid, description, events):
+    manifest = {
+        "ticket": {"id": int(tid), "title": "Calc.add returns a wrong result", "type": "Bug", "state": "Developing",
+                   "tags": ["fixie"], "description": {"format": "markdown", "text": description}},
+        "branch": f"fixie/{tid}",
+        "base_branch": "dev",
+        "pull_request": None,
+        "since": "2026-09-30T09:00:00Z" if events else None,
+        "events": events,
+    }
     in_dir = tmp_path / f"in-{_uuid8()}"
     in_dir.mkdir()
-    (in_dir / "ticket.md").write_text(TICKET, encoding="utf-8", newline="\n")
-    (in_dir / "new.json").write_text(json.dumps(new_events, indent=2) + "\n", encoding="utf-8", newline="\n")
+    (in_dir / "ticket.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     return in_dir
 
 
@@ -151,14 +143,14 @@ def _assert_tree(mirror, volume, tid):
 
 def test_real_claude_fixes_toy_bug_then_handles_review(live_settings, ticket, tmp_path):
     m = live_settings.mirror_volume
-    o1 = run_ticket(ticket, _input(tmp_path, []), "start", "dev", live_settings)
+    o1 = run_ticket(ticket, _input(tmp_path, ticket, FIX, []), "start", "dev", live_settings)
     _assert_run_ok(o1, ticket)
     _assert_tree(m, o1.volume, ticket)
     assert "Calc.java" in _sh(m, o1.volume, f"cd ~/work && git diff --name-only origin/dev..fixie/{ticket}").splitlines()
     first = int(_sh(m, o1.volume, f"cd ~/work && git rev-list --count origin/dev..fixie/{ticket}"))
     assert first >= 1
 
-    o2 = run_ticket(ticket, _input(tmp_path, REVIEW), "resume", "dev", live_settings)
+    o2 = run_ticket(ticket, _input(tmp_path, ticket, MULTIPLY, REOPEN), "resume", "dev", live_settings)
     _assert_run_ok(o2, ticket)
     _assert_tree(m, o2.volume, ticket)
     assert "multiply" in _sh(m, o2.volume, "cat ~/work/Calc.java")

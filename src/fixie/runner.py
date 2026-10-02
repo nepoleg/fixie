@@ -24,7 +24,7 @@ PIDS_LIMIT = 4096
 KILL_WAIT_S = 60
 
 _TICKET_ID_RE = re.compile(r"^[0-9]{1,10}$")
-_OUT_FILES = ("out/result.json", "out/claude.json", "out/session.jsonl")
+_OUT_FILES = ("out/result.json", "out/claude.json", "out/session.jsonl", "out/gradle.log")
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ class RunOutcome:
     result: RunResult | None
     claude_json: bytes | None = field(default=None, repr=False)
     session_log: bytes | None = field(default=None, repr=False)
+    gradle_log: bytes | None = field(default=None, repr=False)
     has_bundle: bool = False
 
     @property
@@ -260,6 +261,9 @@ def run_ticket(
                 "CLAUDE_MODEL": settings.claude_model,
                 "CLAUDE_CODE_OAUTH_TOKEN": settings.claude_oauth_token or "",
                 "AZURE_PERSONAL_ACCESS_TOKEN": settings.ado_feed_token or "",
+                "ADO_ORG_URL": settings.ado_org_url.rstrip("/"),
+                "ADO_PROJECT": settings.ado_project,
+                "ADO_REPO": settings.ado_repo,
                 **(extra_env or {}),
             }
             container = client.containers.create(
@@ -301,7 +305,7 @@ def run_ticket(
                     logger.info(f"ticket {ticket_id}: {line}")
             logger.info(f"runner: ticket {ticket_id} exited {rc}")
 
-            result = claude_json = session_log = None
+            result = claude_json = session_log = gradle_log = None
             has_bundle = False
             if rc == 1 and not timed_out:
                 logger.info(f"runner: ticket {ticket_id} firewall failed, out not read")
@@ -309,6 +313,7 @@ def run_ticket(
                 files, has_bundle = _read_out(container)
                 claude_json = files.get("out/claude.json")
                 session_log = files.get("out/session.jsonl")
+                gradle_log = files.get("out/gradle.log")
                 result_bytes = files.get("out/result.json")
                 result = parse_result(result_bytes) if result_bytes is not None else None
                 if result is None:
@@ -331,6 +336,7 @@ def run_ticket(
             result=result,
             claude_json=claude_json,
             session_log=session_log,
+            gradle_log=gradle_log,
             has_bundle=has_bundle,
         )
     finally:

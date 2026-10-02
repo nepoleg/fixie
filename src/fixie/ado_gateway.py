@@ -280,18 +280,6 @@ class RealAdoGateway(AdoGateway):
                 attachments.append(Attachment(id=att_id, name=name, url=rel["url"]))
         return attachments
 
-    def download_attachment(self, url: str) -> bytes:
-        att_id = attachment_id(url)
-        if att_id is None:
-            raise KeyError(url)
-        with self._lock:
-            try:
-                return b"".join(self._wit.get_attachment_content(att_id, project=self.project, download=True))
-            except AzureDevOpsServiceError as exc:
-                if _not_found(exc):
-                    raise KeyError(url) from None
-                raise
-
     def get_pull_request(self, pr_id: int) -> PullRequest:
         with self._lock:
             try:

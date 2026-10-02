@@ -109,7 +109,14 @@ class Orchestrator:
                     logger.info(f"orchestrator: ticket {tid} in flight, skipped")
                     continue
 
-                snapshot = load_snapshot(gw, tid)
+                try:
+                    snapshot = load_snapshot(gw, tid)
+                except KeyError:
+                    if tid in tagged:
+                        raise
+                    self._delete_volume(str(tid))
+                    logger.info(f"orchestrator: ticket {tid} deleted in ADO, volume deleted")
+                    continue
                 status = trusted_status(
                     find_status_comment(snapshot.comments, s.owner_email), tid, s.owner_email, s.state_secret
                 )
@@ -144,7 +151,7 @@ class Orchestrator:
         try:
             started = publisher.mark_run_started(self.gateway, self.settings, tid, status, snapshot.ticket.state)
             tmp = Path(tempfile.mkdtemp(prefix=f"fixie-in-{tid}-"))
-            write_input(self.gateway, snapshot, classification.events, self.settings, tmp)
+            write_input(snapshot, classification.events, classification.since, self.settings, tmp)
 
             if self._stop.is_set():
                 logger.info(f"orchestrator: ticket {tid} stopping, run skipped")

@@ -15,7 +15,7 @@ from fixie.settings import Settings
 logger = logging.getLogger(__name__)
 
 _READS = (
-    "find_tagged_tickets", "get_ticket", "get_updates", "get_comments", "get_attachments", "download_attachment",
+    "find_tagged_tickets", "get_ticket", "get_updates", "get_comments", "get_attachments",
     "get_pull_request", "find_pull_requests", "get_threads", "get_builds", "get_branch_head",
 )
 

@@ -33,7 +33,7 @@ def classify(snapshot: TicketSnapshot, status: FixieStatus | None, settings: Set
                 if since is None or c.created_date > since:
                     since = c.created_date
         events = collect_events(snapshot, None, since, settings.owner_email, settings.allowlist)
-        return Classification(Action.REBUILD, events)
+        return Classification(Action.REBUILD, events, since)
 
     if status.run_started is None:
         return Classification(Action.NEW, ())
@@ -44,9 +44,9 @@ def classify(snapshot: TicketSnapshot, status: FixieStatus | None, settings: Set
         else:
             events = ()
         action = Action.GIVE_UP if status.attempts >= settings.max_attempts else Action.RETRY
-        return Classification(action, events)
+        return Classification(action, events, status.last_finished_run_started)
 
     events = collect_events(snapshot, status, status.last_finished_run_started, settings.owner_email, settings.allowlist)
     if events:
-        return Classification(Action.RESUME, events)
+        return Classification(Action.RESUME, events, status.last_finished_run_started)
     return Classification(Action.SKIP, ())

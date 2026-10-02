@@ -11,6 +11,7 @@ fail() {
 
 rm -rf ~/out
 mkdir -p ~/out
+touch ~/.fixie-run-start
 
 TICKET_RE='^[0-9]{1,10}$'
 BRANCH_RE='^[A-Za-z0-9][A-Za-z0-9._/-]*$'
@@ -31,8 +32,7 @@ if [ -d /tmp/fixie-in ]; then
   { rm -rf ~/in && cp -R /tmp/fixie-in ~/in; } || fail 2 "input copy failed"
 fi
 
-[ -f ~/in/ticket.md ] || fail 2 "missing /home/agent/in/ticket.md"
-[ -f ~/in/new.json ] || fail 2 "missing /home/agent/in/new.json"
+[ -f ~/in/ticket.json ] || fail 2 "missing /home/agent/in/ticket.json"
 
 SESSION_FILE=~/.claude/projects/-home-agent-work/$SESSION_ID.jsonl
 
@@ -71,7 +71,7 @@ fi
 
 cd ~/work
 START_SHA=$(git rev-parse HEAD)
-PROMPT='Your ticket is in ~/in/ticket.md. Events since your last run are in ~/in/new.json (an empty list on the first run). Open PR threads are in ~/in/pr.md if it exists, and attachments in ~/in/attachments. Do the work following your rules, then write ~/out/result.json.'
+PROMPT='First read your rules in /opt/fixie/CLAUDE.md; they may have changed since your last run and they replace any earlier version. Your ticket and what changed since your last run are in ~/in/ticket.json. Read more from Azure DevOps as the rules describe, do the work, then write ~/out/result.json.'
 
 if [ "${FIXIE_FAKE_AGENT:-}" = "1" ]; then
   if /opt/fixie/fake-agent.sh </dev/null >~/out/claude.json; then
@@ -115,7 +115,13 @@ if git rev-parse --verify -q "$BRANCH" >/dev/null && ! git merge-base --is-ances
   fi
 fi
 
-rm -f ~/out/branch.bundle ~/out/session.jsonl
+rm -f ~/out/branch.bundle ~/out/session.jsonl ~/out/gradle.log
+
+find ~/.gradle/daemon -name 'daemon-*.out.log' -newer ~/.fixie-run-start 2>/dev/null | sort | while IFS= read -r log; do
+  printf '===== %s =====\n' "${log#"$HOME"/}"
+  cat "$log"
+done >~/out/gradle.log || true
+[ -s ~/out/gradle.log ] || rm -f ~/out/gradle.log
 
 if [ -f "$SESSION_FILE" ]; then
   cp "$SESSION_FILE" ~/out/session.jsonl

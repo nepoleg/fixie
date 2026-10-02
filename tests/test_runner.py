@@ -136,23 +136,23 @@ def test_resume_run_on_same_volume(mirror, ticket, tmp_path):
 
 def test_inputs_replaced_each_run(mirror, ticket, tmp_path):
     s = settings(mirror)
-    in1 = {"ticket.md": "v1\n", "new.json": "[]\n", "pr.md": "stale\n", "attachments/a.png": b"png"}
+    in1 = {"ticket.json": "v1\n", "stale.txt": "stale\n", "sub/a.png": b"png"}
     o1 = run_ticket(ticket, _in(tmp_path, in1), "start", "dev", s, extra_env=FAKE)
     assert o1.ok
 
     inspect1 = _inspect(o1.volume, "cd ~/in && find . | sort")
     assert inspect1.stdout.splitlines() == [
-        ".", "./attachments", "./attachments/a.png", "./new.json", "./pr.md", "./ticket.md",
+        ".", "./stale.txt", "./sub", "./sub/a.png", "./ticket.json",
     ]
 
-    in2 = {"ticket.md": "v2\n", "new.json": "[]\n"}
+    in2 = {"ticket.json": "v2\n"}
     o2 = run_ticket(ticket, _in(tmp_path, in2), "resume", "dev", s, extra_env=FAKE)
     assert o2.ok
 
     inspect2 = _inspect(
-        o2.volume, "cd ~/in && find . | sort; cat ticket.md; stat -c '%U %a' ~/in ~/in/ticket.md"
+        o2.volume, "cd ~/in && find . | sort; cat ticket.json; stat -c '%U %a' ~/in ~/in/ticket.json"
     )
-    assert inspect2.stdout.splitlines() == [".", "./new.json", "./ticket.md", "v2", "agent 755", "agent 644"]
+    assert inspect2.stdout.splitlines() == [".", "./ticket.json", "v2", "agent 755", "agent 644"]
 
 
 def test_missing_result_is_failed_run(mirror, ticket, tmp_path, caplog):
@@ -169,7 +169,7 @@ def test_missing_result_is_failed_run(mirror, ticket, tmp_path, caplog):
 
 def test_invalid_input_reported(mirror, ticket, tmp_path):
     s = settings(mirror)
-    o = run_ticket(ticket, _in(tmp_path, {"ticket.md": "x\n"}), "start", "dev", s, extra_env=FAKE)
+    o = run_ticket(ticket, _in(tmp_path, {"other.txt": "x\n"}), "start", "dev", s, extra_env=FAKE)
 
     assert o.exit_code == 2
     assert o.result is None
@@ -288,6 +288,9 @@ def test_container_config(mirror, ticket, tmp_path, monkeypatch, caplog, case):
             "CLAUDE_MODEL": "haiku",
             "CLAUDE_CODE_OAUTH_TOKEN": "dummy-claude-8472",
             "AZURE_PERSONAL_ACCESS_TOKEN": "dummy-feed-8472",
+            "ADO_ORG_URL": "https://dev.azure.com/org",
+            "ADO_PROJECT": "P",
+            "ADO_REPO": "R",
             "FIXIE_FAKE_AGENT": "1",
             "FIXIE_FIREWALL": "off",
         }

@@ -145,7 +145,7 @@ def test_wait_read_timeout_is_treated_as_timeout(monkeypatch, tmp_path):
     fake = _FakeClient(container=container, existing_volumes={"mirror-vol", "gradle-vol"})
     monkeypatch.setattr(runner.docker, "from_env", lambda: fake)
 
-    (tmp_path / "ticket.md").write_text("x\n", encoding="utf-8")
+    (tmp_path / "ticket.json").write_text("x\n", encoding="utf-8")
     outcome = run_ticket("42", tmp_path, "start", "dev", _settings())
 
     assert outcome.timed_out is True
@@ -163,7 +163,7 @@ def test_connection_error_during_wait_is_treated_as_timeout(monkeypatch, tmp_pat
     fake = _FakeClient(container=container, existing_volumes={"mirror-vol", "gradle-vol"})
     monkeypatch.setattr(runner.docker, "from_env", lambda: fake)
 
-    (tmp_path / "ticket.md").write_text("x\n", encoding="utf-8")
+    (tmp_path / "ticket.json").write_text("x\n", encoding="utf-8")
     outcome = run_ticket("42", tmp_path, "start", "dev", _settings())
 
     assert outcome.timed_out is True
@@ -178,7 +178,7 @@ def test_container_remove_exception_does_not_mask_outcome(monkeypatch, tmp_path,
     fake = _FakeClient(container=container, existing_volumes={"mirror-vol", "gradle-vol"})
     monkeypatch.setattr(runner.docker, "from_env", lambda: fake)
 
-    (tmp_path / "ticket.md").write_text("x\n", encoding="utf-8")
+    (tmp_path / "ticket.json").write_text("x\n", encoding="utf-8")
     outcome = run_ticket("42", tmp_path, "start", "dev", _settings())
 
     assert outcome.ok is True
@@ -193,7 +193,7 @@ def test_run_ticket_closes_client_on_success(monkeypatch, tmp_path):
     fake = _FakeClient(container=container, existing_volumes={"mirror-vol", "gradle-vol"})
     monkeypatch.setattr(runner.docker, "from_env", lambda: fake)
 
-    (tmp_path / "ticket.md").write_text("x\n", encoding="utf-8")
+    (tmp_path / "ticket.json").write_text("x\n", encoding="utf-8")
     run_ticket("42", tmp_path, "start", "dev", _settings())
 
     assert fake.closed is True

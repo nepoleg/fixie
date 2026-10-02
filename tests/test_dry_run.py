@@ -58,4 +58,4 @@ def test_dry_run_orchestrator_saves_input_and_writes_nothing(tmp_path):
         orch.shutdown()
     assert fake.writes == []
     saved = sorted(p.name for p in tmp_path.iterdir())
-    assert saved and all((tmp_path / t / "ticket.md").is_file() for t in saved)
+    assert saved and all((tmp_path / t / "ticket.json").is_file() for t in saved)

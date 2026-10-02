@@ -177,7 +177,7 @@ def test_publish_done_happy_path():
 
     attachment = gw.get_attachments(501)[-1]
     assert attachment.name == "fixie-501-20260301T120000Z.jsonl.gz"
-    assert gzip.decompress(gw.download_attachment(attachment.url)) == b'{"a":1}\n'
+    assert gzip.decompress(gw.blobs[attachment.url]) == b'{"a":1}\n'
 
     assert calls == [("https://example.invalid/P/_git/R", "501", "fixie-ticket-501")]
 
@@ -438,7 +438,7 @@ def test_tokens_never_posted():
     comment_text = gw.get_comments(501)[-1].text
     assert "[redacted]" in comment_text
     attachment = gw.get_attachments(501)[-1]
-    log = gzip.decompress(gw.download_attachment(attachment.url)).decode()
+    log = gzip.decompress(gw.blobs[attachment.url]).decode()
     assert "[redacted]" in log
 
 
@@ -516,3 +516,17 @@ def test_publish_replies_once_in_threads_with_new_comments():
     assert [(r["pr_id"], r["thread_id"]) for r in replies] == [(9, 70)]
     text = replies[0]["text"]
     assert text.startswith(f"{BOT_SIGN} fixie: done") and "Renamed it" in text and "fixie-run:" in text
+
+
+def test_gradle_log_attached_gzipped_and_redacted():
+    gw = _gateway()
+    s = replace(SETTINGS, ado_feed_token="feed-secret-1234")
+    status = mark_run_started(gw, s, 501, None)
+    outcome = replace(_outcome(), gradle_log=b"BUILD FAILED token=feed-secret-1234\n")
+
+    publish(gw, s, load_snapshot(gw, 501), status, outcome, push=_fake_push([]), mirror_lock=LOCK)
+    publish(gw, s, load_snapshot(gw, 501), status, outcome, push=_fake_push([]), mirror_lock=LOCK)
+
+    logs = [a for a in gw.get_attachments(501) if a.name.endswith(".gradle.log.gz")]
+    assert len(logs) == 1
+    assert gzip.decompress(gw.blobs[logs[0].url]) == b"BUILD FAILED token=[redacted]\n"

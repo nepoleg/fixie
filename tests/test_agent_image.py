@@ -26,7 +26,7 @@ TICKET_ENV = {
     "FIXIE_FAKE_AGENT": "1",
     "FIXIE_FIREWALL": "off",
 }
-INPUT = {"ticket.md": "# Ticket 42\n\nAdd a line.\n", "new.json": "[]\n"}
+INPUT = {"ticket.json": '{"ticket": {"id": 42, "title": "Add a line"}, "events": []}\n'}
 
 
 def _docker_ok():
@@ -276,7 +276,7 @@ def test_resume_run_adds_commit_and_clears_out(mirror, ticket_volume, tmp_path):
     _run_ticket(mirror_vol, ticket_volume, TICKET_ENV, INPUT, tmp_path)
 
     resume_env = {**TICKET_ENV, "RUN_MODE": "resume"}
-    resume_in = {"ticket.md": INPUT["ticket.md"], "new.json": '[{"type": "ticket_comment", "content": "one more"}]\n'}
+    resume_in = {"ticket.json": '{"ticket": {"id": 42}, "events": [{"type": "ticket_comment", "comment": 7}]}\n'}
     rc, _out, err, out_dir = _run_ticket(
         mirror_vol, ticket_volume, resume_env, resume_in, tmp_path, pre_out={"stale.txt": "x"}
     )
@@ -316,6 +316,20 @@ def test_rewritten_history_kept_as_new_commit(mirror, ticket_volume, tmp_path):
     assert _bundle_commits(host_bare, out_dir / "branch.bundle", "fixie/77") == (2, "fake: squashed")
     files = _git_in(mirror_vol, ticket_volume, "cd ~/work && git ls-tree --name-only fixie/77 && git status --porcelain")
     assert files.stdout.split() == ["FIXIE_FAKE.md", "README.md", "existing.txt"]
+
+
+def test_gradle_daemon_logs_of_this_run_collected(mirror, ticket_volume, tmp_path):
+    mirror_vol, _host_bare = mirror
+    rc, _out, err, out_dir = _run_ticket(
+        mirror_vol, ticket_volume, {**TICKET_ENV, "FIXIE_FAKE_GRADLE": "BUILD SUCCESSFUL run1"}, INPUT, tmp_path
+    )
+    assert rc == 0, err
+    assert "BUILD SUCCESSFUL run1" in (out_dir / "gradle.log").read_text(encoding="utf-8")
+
+    resume = {**TICKET_ENV, "RUN_MODE": "resume"}
+    rc, _out, err, out_dir = _run_ticket(mirror_vol, ticket_volume, resume, INPUT, tmp_path)
+    assert rc == 0, err
+    assert not (out_dir / "gradle.log").exists()
 
 
 def _git_in(mirror_vol, ticket_vol, script):
@@ -399,7 +413,7 @@ def test_tokens_not_persisted(mirror, ticket_volume, tmp_path):
         ({"BASE_BRANCH": "../etc"}, INPUT, "run-ticket: invalid BASE_BRANCH"),
         ({"SESSION_ID": "not-a-uuid"}, INPUT, "run-ticket: invalid SESSION_ID"),
         ({"RUN_MODE": "restart"}, INPUT, "run-ticket: invalid RUN_MODE"),
-        ({}, None, "run-ticket: missing /home/agent/in/ticket.md"),
+        ({}, None, "run-ticket: missing /home/agent/in/ticket.json"),
     ],
 )
 def test_invalid_input_rejected(mirror, ticket_volume, tmp_path, changes, in_files, message):
