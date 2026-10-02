@@ -90,6 +90,10 @@ class AdoGateway(ABC):
         """Add a reply to a pull request thread and return it; raises KeyError if unknown."""
 
     @abstractmethod
+    def set_thread_status(self, pr_id: int, thread_id: int, status: str) -> None:
+        """Set a pull request thread's status (e.g. "fixed"); raises KeyError if unknown."""
+
+    @abstractmethod
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         """Replace a comment's text and return it; raises KeyError if unknown."""
 

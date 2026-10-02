@@ -45,6 +45,7 @@ class RunOutcome:
     claude_json: bytes | None = field(default=None, repr=False)
     session_log: bytes | None = field(default=None, repr=False)
     gradle_log: bytes | None = field(default=None, repr=False)
+    container_log: bytes | None = field(default=None, repr=False)
     has_bundle: bool = False
 
     @property
@@ -92,7 +93,10 @@ def parse_result(data: bytes) -> RunResult | None:
         return None
     if run_status == RunStatus.GAVE_UP:
         return None
-    return RunResult(run_status, summary, tuple(questions))
+    resolved = obj.get("resolved_threads", [])
+    if not isinstance(resolved, list) or not all(type(t) is int for t in resolved):
+        return None
+    return RunResult(run_status, summary, tuple(questions), tuple(resolved))
 
 
 def _create_ticket_volume(client, ticket_id: str) -> str:
@@ -300,7 +304,8 @@ def run_ticket(
                 rc = container.wait(timeout=KILL_WAIT_S)["StatusCode"]
                 logger.info(f"runner: ticket {ticket_id} timed out after {settings.ticket_timeout_s}s, killed")
 
-            for line in container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace").splitlines():
+            container_log = container.logs(stdout=False, stderr=True)
+            for line in container_log.decode("utf-8", errors="replace").splitlines():
                 if line.strip():
                     logger.info(f"ticket {ticket_id}: {line}")
             logger.info(f"runner: ticket {ticket_id} exited {rc}")
@@ -337,6 +342,7 @@ def run_ticket(
             claude_json=claude_json,
             session_log=session_log,
             gradle_log=gradle_log,
+            container_log=container_log or None,
             has_bundle=has_bundle,
         )
     finally:

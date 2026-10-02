@@ -299,6 +299,19 @@ class FakeGateway(AdoGateway):
                     return reply
             raise KeyError(thread_id)
 
+    def set_thread_status(self, pr_id: int, thread_id: int, status: str) -> None:
+        with self._lock:
+            threads = self.threads.get(pr_id)
+            if threads is None:
+                raise KeyError(pr_id)
+            for i, thread in enumerate(threads):
+                if thread.id == thread_id:
+                    self._tick()
+                    threads[i] = replace(thread, status=status)
+                    self._record("set_thread_status", {"pr_id": pr_id, "thread_id": thread_id, "status": status})
+                    return
+            raise KeyError(thread_id)
+
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         with self._lock:
             if ticket_id not in self.tickets:

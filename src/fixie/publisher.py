@@ -1,7 +1,8 @@
 """Turn a finished agent run into ADO writes: status comment, PR, run summary, session log."""
 
-import gzip
 import html
+import io
+import tarfile
 import logging
 from dataclasses import replace
 from datetime import UTC
@@ -19,6 +20,7 @@ from fixie.status_comment import find_status_comment, format_status_comment, is_
 
 logger = logging.getLogger(__name__)
 
+RESOLVED_THREAD_STATUS = "fixed"
 _LABELS = {RunStatus.DONE: "done", RunStatus.NEEDS_INFO: "needs info", RunStatus.BLOCKED: "blocked"}
 
 
@@ -44,6 +46,27 @@ def _redact_bytes(data: bytes, settings: Settings) -> bytes:
         if token:
             data = data.replace(token.encode("utf-8"), b"[redacted]")
     return data
+
+
+def _logs_archive(outcome: RunOutcome, settings: Settings) -> bytes | None:
+    members = [
+        ("session.jsonl", outcome.session_log),
+        ("gradle.log", outcome.gradle_log),
+        ("claude.json", outcome.claude_json),
+        ("container.log", outcome.container_log),
+    ]
+    members = [(name, _redact_bytes(data, settings)) for name, data in members if data]
+    if not members:
+        return None
+    buf = io.BytesIO()
+    # ponytail: logs are packed whole; cap or truncate if ADO's attachment size limit is ever hit.
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for name, data in members:
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            info.mode = 0o644
+            tar.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
 
 
 def _marker(prefix: str, status: FixieStatus) -> str:
@@ -112,11 +135,12 @@ def record_give_up(gateway: AdoGateway, settings: Settings, ticket_id: int, stat
 
 def _reply_to_threads(gateway, settings, snapshot, status, pr_id, result, marker) -> None:
     thread_ids = threads_with_new_comments(snapshot, status.last_finished_run_started, settings.owner_email)
-    if not thread_ids:
+    if not thread_ids and not result.resolved_threads:
         return
+    current = {t.id: t for t in gateway.get_threads(pr_id)}
     replied = {
         t.id
-        for t in gateway.get_threads(pr_id)
+        for t in current.values()
         if any(is_owner(c.author, settings.owner_email) and is_bot_signed(c.content) and marker in c.content
                for c in t.comments)
     }
@@ -129,6 +153,13 @@ def _reply_to_threads(gateway, settings, snapshot, status, pr_id, result, marker
         if thread_id not in replied:
             gateway.reply_to_thread(pr_id, thread_id, text)
             logger.info(f"publisher: ticket {snapshot.ticket.id} replied in PR {pr_id} thread {thread_id}")
+    for thread_id in result.resolved_threads:
+        thread = current.get(thread_id)
+        if thread is None:
+            logger.info(f"publisher: ticket {snapshot.ticket.id} thread {thread_id} not in PR {pr_id}, not resolved")
+        elif thread.status != RESOLVED_THREAD_STATUS:
+            gateway.set_thread_status(pr_id, thread_id, RESOLVED_THREAD_STATUS)
+            logger.info(f"publisher: ticket {snapshot.ticket.id} resolved PR {pr_id} thread {thread_id}")
 
 
 def publish(
@@ -210,13 +241,12 @@ def publish(
     if pr is not None and snapshot.pull_request is not None and pr.id == snapshot.pull_request.id:
         _reply_to_threads(gateway, settings, snapshot, status, pr.id, result, marker)
 
-    stem = f"fixie-{ticket_id}-{status.run_started.astimezone(UTC):%Y%m%dT%H%M%SZ}"
-    if outcome.session_log is None:
-        logger.info(f"publisher: ticket {ticket_id} no session log, not attached")
-    for name, data in ((f"{stem}.jsonl.gz", outcome.session_log), (f"{stem}.gradle.log.gz", outcome.gradle_log)):
-        # ponytail: logs are attached whole; cap or truncate if ADO's attachment size limit is ever hit.
-        if data is not None and not any(a.name == name for a in gateway.get_attachments(ticket_id)):
-            gateway.attach_file(ticket_id, name, gzip.compress(_redact_bytes(data, settings), mtime=0))
+    name = f"fixie-{ticket_id}-{status.run_started.astimezone(UTC):%Y%m%dT%H%M%SZ}.logs.tar.gz"
+    archive = _logs_archive(outcome, settings)
+    if archive is None:
+        logger.info(f"publisher: ticket {ticket_id} no logs, nothing attached")
+    elif not any(a.name == name for a in gateway.get_attachments(ticket_id)):
+        gateway.attach_file(ticket_id, name, archive)
 
     finished = replace(
         status,

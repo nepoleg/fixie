@@ -1,4 +1,5 @@
-import gzip
+import io
+import tarfile
 import logging
 import threading
 from dataclasses import replace
@@ -43,6 +44,11 @@ SETTINGS = Settings(
 )
 
 LOCK = threading.Lock()
+
+
+def _members(blob):
+    with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
+        return {m.name: tar.extractfile(m).read() for m in tar.getmembers()}
 
 
 def _gateway():
@@ -176,8 +182,8 @@ def test_publish_done_happy_path():
     assert f"fixie-run:{status.run_started.isoformat()}" in comment_text
 
     attachment = gw.get_attachments(501)[-1]
-    assert attachment.name == "fixie-501-20260301T120000Z.jsonl.gz"
-    assert gzip.decompress(gw.blobs[attachment.url]) == b'{"a":1}\n'
+    assert attachment.name == "fixie-501-20260301T120000Z.logs.tar.gz"
+    assert _members(gw.blobs[attachment.url]) == {"session.jsonl": b'{"a":1}\n'}
 
     assert calls == [("https://example.invalid/P/_git/R", "501", "fixie-ticket-501")]
 
@@ -431,14 +437,14 @@ def test_tokens_never_posted():
                 for token in tokens:
                     assert token not in value
             if isinstance(value, bytes) and method == "attach_file":
-                content = gzip.decompress(value).decode()
-                for token in tokens:
-                    assert token not in content
+                for content in _members(value).values():
+                    for token in tokens:
+                        assert token.encode() not in content
 
     comment_text = gw.get_comments(501)[-1].text
     assert "[redacted]" in comment_text
     attachment = gw.get_attachments(501)[-1]
-    log = gzip.decompress(gw.blobs[attachment.url]).decode()
+    log = _members(gw.blobs[attachment.url])["session.jsonl"].decode()
     assert "[redacted]" in log
 
 
@@ -495,7 +501,7 @@ def _thread(thread_id, author, text, when):
     return PrThread(thread_id, "active", None, None, (comment,), when, when)
 
 
-def test_publish_replies_once_in_threads_with_new_comments():
+def test_publish_replies_in_new_threads_and_resolves_only_listed():
     gw = _gateway()
     alice = Identity("Alice", "alice@example.com")
     old = datetime(2026, 2, 1, tzinfo=UTC)
@@ -504,29 +510,44 @@ def test_publish_replies_once_in_threads_with_new_comments():
         _thread(70, alice, "please rename", datetime(2026, 2, 25, tzinfo=UTC)),
         _thread(71, alice, "old remark", old),
         _thread(72, OWNER, f"{BOT_SIGN} fixie: done", datetime(2026, 2, 26, tzinfo=UTC)),
+        _thread(73, alice, "and what about X?", datetime(2026, 2, 25, tzinfo=UTC)),
     ]
     status = mark_run_started(gw, SETTINGS, 502, previous)
     snapshot = load_snapshot(gw, 502)
-    outcome = _outcome(ticket_id="502", summary="Renamed it")
+    result = RunResult(RunStatus.DONE, "Renamed it", (), (70, 71, 999))
+    outcome = replace(_outcome(ticket_id="502"), result=result)
 
     publish(gw, SETTINGS, snapshot, status, outcome, push=_fake_push([]), mirror_lock=LOCK)
     publish(gw, SETTINGS, snapshot, status, outcome, push=_fake_push([]), mirror_lock=LOCK)
 
     replies = [w[1] for w in gw.writes if w[0] == "reply_to_thread"]
-    assert [(r["pr_id"], r["thread_id"]) for r in replies] == [(9, 70)]
+    assert [(r["pr_id"], r["thread_id"]) for r in replies] == [(9, 70), (9, 73)]
     text = replies[0]["text"]
     assert text.startswith(f"{BOT_SIGN} fixie: done") and "Renamed it" in text and "fixie-run:" in text
+    resolved = [w[1]["thread_id"] for w in gw.writes if w[0] == "set_thread_status"]
+    assert resolved == [70, 71]
+    assert {t.id: t.status for t in gw.get_threads(9)} == {70: "fixed", 71: "fixed", 72: "active", 73: "active"}
 
 
-def test_gradle_log_attached_gzipped_and_redacted():
+def test_all_logs_packed_in_one_archive_redacted():
     gw = _gateway()
     s = replace(SETTINGS, ado_feed_token="feed-secret-1234")
     status = mark_run_started(gw, s, 501, None)
-    outcome = replace(_outcome(), gradle_log=b"BUILD FAILED token=feed-secret-1234\n")
+    outcome = replace(
+        _outcome(),
+        gradle_log=b"BUILD FAILED token=feed-secret-1234\n",
+        claude_json=b'{"num_turns": 3}',
+        container_log=b"fixie-firewall: self-test ok\n",
+    )
 
     publish(gw, s, load_snapshot(gw, 501), status, outcome, push=_fake_push([]), mirror_lock=LOCK)
     publish(gw, s, load_snapshot(gw, 501), status, outcome, push=_fake_push([]), mirror_lock=LOCK)
 
-    logs = [a for a in gw.get_attachments(501) if a.name.endswith(".gradle.log.gz")]
-    assert len(logs) == 1
-    assert gzip.decompress(gw.blobs[logs[0].url]) == b"BUILD FAILED token=[redacted]\n"
+    archives = [a for a in gw.get_attachments(501) if a.name.endswith(".logs.tar.gz")]
+    assert len(archives) == 1
+    assert _members(gw.blobs[archives[0].url]) == {
+        "session.jsonl": b'{"a":1}\n',
+        "gradle.log": b"BUILD FAILED token=[redacted]\n",
+        "claude.json": b'{"num_turns": 3}',
+        "container.log": b"fixie-firewall: self-test ok\n",
+    }

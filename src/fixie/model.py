@@ -160,6 +160,7 @@ class RunResult:
     status: RunStatus
     summary: str
     questions: tuple[str, ...] = ()
+    resolved_threads: tuple[int, ...] = ()
 
 
 class Action(StrEnum):

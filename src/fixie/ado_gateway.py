@@ -9,7 +9,7 @@ from datetime import datetime
 from azure.devops.connection import Connection
 from azure.devops.exceptions import AzureDevOpsServiceError
 from azure.devops.v7_1.git.models import Comment as GitComment
-from azure.devops.v7_1.git.models import GitPullRequest, GitPullRequestSearchCriteria
+from azure.devops.v7_1.git.models import GitPullRequest, GitPullRequestCommentThread, GitPullRequestSearchCriteria
 from azure.devops.v7_1.work_item_tracking.models import CommentCreate, CommentUpdate, JsonPatchOperation, Wiql
 from msrest.authentication import BasicAuthentication
 
@@ -368,6 +368,17 @@ class RealAdoGateway(AdoGateway):
                     raise KeyError(thread_id) from None
                 raise
         return _pr_comment(created)
+
+    def set_thread_status(self, pr_id: int, thread_id: int, status: str) -> None:
+        with self._lock:
+            try:
+                self._git.update_thread(
+                    GitPullRequestCommentThread(status=status), self.repo, pr_id, thread_id, project=self.project
+                )
+            except AzureDevOpsServiceError as exc:
+                if _not_found(exc):
+                    raise KeyError(thread_id) from None
+                raise
 
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         with self._lock:

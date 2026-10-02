@@ -104,7 +104,7 @@ Ticket execution is implemented using Claude Code running in a sandbox.
 - The volume is deleted when the ticket is closed.
 
 ### Run output
-- Claude commits locally and writes a result file in a fixed format: status (done / blocked / needs info), summary, questions.
+- Claude commits locally and writes a result file in a fixed format: status (done / blocked / needs info), summary, questions, resolved PR threads.
 - After Claude exits, the container script packs the new commits into a git bundle and copies the session log to `out`.
 - The orchestrator reads `out` from the container before removing it. A missing or invalid result counts as a failed run.
 
@@ -115,7 +115,8 @@ Ticket execution is implemented using Claude Code running in a sandbox.
 - The orchestrator checks the branch has new commits, then creates or updates the PR with the summary.
 - It links the PR to the work item and posts a bot-signed comment. For "needs info", it posts the questions instead.
 - It also replies, bot-signed, in every PR thread that got a new human comment since the last finished run. The reply carries the run marker, so a re-run never replies twice.
-- The session log is gzipped and attached to the ticket, one file per run. It may contain anything the agent read from the repo.
+- The agent lists in `result.json` (`resolved_threads`) the PR threads it fully handled; fixie marks exactly those as resolved (`fixed`). Threads where the agent asked a question or did only part of the work stay active.
+- The run's logs are attached to the ticket as one `fixie-<id>-<run start>.logs.tar.gz` per run: the Claude session (`session.jsonl`), the Gradle daemon logs of the run (`gradle.log`), Claude's final output (`claude.json`) and the container's stderr (`container.log`). Tokens are redacted. The logs may contain anything the agent read from the repo.
 
 ### Ticket as memory
 - Fixie keeps no local database. The ticket itself holds fixie's state, so restarts and machine changes lose nothing.

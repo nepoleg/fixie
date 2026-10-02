@@ -54,6 +54,9 @@ class DryRunGateway(AdoGateway):
         now = self._log("reply_to_thread", pr_id=pr_id, thread_id=thread_id, text=text)
         return PrComment(-1, self.owner, text, now, now, "text")
 
+    def set_thread_status(self, pr_id: int, thread_id: int, status: str) -> None:
+        self._log("set_thread_status", pr_id=pr_id, thread_id=thread_id, status=status)
+
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         return self._comment(comment_id, text, self._log("edit_comment", ticket_id=ticket_id, comment_id=comment_id, text=text))
 

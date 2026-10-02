@@ -56,13 +56,15 @@ ado "build/builds/<build>/logs/<logId>?api-version=7.1" | tail -n 200
 ## Result
 
 Before finishing, write `~/out/result.json`, a UTF-8 JSON object with exactly the keys `status`,
-`summary`, `questions`, shown in one fenced block that is valid JSON:
+`summary`, `questions`, `resolved_threads`, shown in one fenced block that is valid JSON:
 
 ```json
-{"status": "done", "summary": "Added null check in ProfileService and a unit test.", "questions": []}
+{"status": "done", "summary": "Added null check in ProfileService and a unit test.", "questions": [], "resolved_threads": [206426]}
 ```
 
 - `status`: `done` (work finished and committed), `blocked` (cannot proceed; say why in
   `summary`), `needs_info` (a human must answer; put the questions in `questions`).
 - `summary`: Markdown, what changed and why; used for the PR description and ticket comment.
 - `questions`: list of strings; non-empty only for `needs_info`.
+- `resolved_threads`: ids of PR threads whose requests you fully handled; fixie marks them resolved. Leave out a
+  thread where you asked a question or did only part of the work. Use `[]` when there is none.

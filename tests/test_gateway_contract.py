@@ -28,6 +28,7 @@ GATEWAY_METHODS = (
     "remove_tag",
     "set_state",
     "reply_to_thread",
+    "set_thread_status",
     "edit_comment",
     "create_pull_request",
     "update_pull_request",

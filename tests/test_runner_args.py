@@ -33,6 +33,9 @@ def test_parse_result_valid():
     assert parse_result(b'{"status": "done", "summary": "s", "questions": [], "extra": 1}') == RunResult(
         RunStatus.DONE, "s", ()
     )
+    assert parse_result(b'{"status": "done", "summary": "s", "questions": [], "resolved_threads": [7, 8]}') == RunResult(
+        RunStatus.DONE, "s", (), (7, 8)
+    )
 
 
 @pytest.mark.parametrize(
@@ -47,6 +50,9 @@ def test_parse_result_valid():
         b'{"status": "done", "summary": "s", "questions": "q"}',
         b'{"status": "done", "summary": "s", "questions": [1]}',
         b'{"status": "done", "summary": "s"}',
+        b'{"status": "done", "summary": "s", "questions": [], "resolved_threads": 7}',
+        b'{"status": "done", "summary": "s", "questions": [], "resolved_threads": ["7"]}',
+        b'{"status": "done", "summary": "s", "questions": [], "resolved_threads": [true]}',
         b"\xff\xfe",
     ],
 )
