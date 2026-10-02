@@ -2,7 +2,7 @@
 
 from fixie.allowlist import is_owner
 from fixie.events import collect_events
-from fixie.gateway import CLOSED_STATES, OPEN_STATES
+from fixie.gateway import OPEN_STATES
 from fixie.model import Action, Classification, FixieStatus, TicketSnapshot
 from fixie.settings import Settings
 from fixie.status_comment import is_bot_signed, is_status_text
@@ -12,11 +12,8 @@ def classify(snapshot: TicketSnapshot, status: FixieStatus | None, settings: Set
     """Classify a ticket into one orchestrator action, from its snapshot and trusted status."""
     ticket = snapshot.ticket
 
-    if ticket.state in CLOSED_STATES:
-        return Classification(Action.CLEAN_UP, ())
     if ticket.state not in OPEN_STATES:
-        merged = snapshot.pull_request is not None and snapshot.pull_request.status == "completed"
-        return Classification(Action.CLEAN_UP if merged else Action.SKIP, ())
+        return Classification(Action.SKIP, ())
 
     tag = settings.ticket_tag.strip().lower()
     if not any(t.strip().lower() == tag for t in ticket.tags):
@@ -33,7 +30,7 @@ def classify(snapshot: TicketSnapshot, status: FixieStatus | None, settings: Set
             if is_owner(c.created_by, settings.owner_email) and is_bot_signed(c.text) and not is_status_text(c.text):
                 if since is None or c.created_date > since:
                     since = c.created_date
-        events = collect_events(snapshot, None, since, settings.owner_email, settings.allowlist)
+        events = collect_events(snapshot, None, since, settings.owner_email)
         return Classification(Action.REBUILD, events, since)
 
     if status.run_started is None:
@@ -41,13 +38,13 @@ def classify(snapshot: TicketSnapshot, status: FixieStatus | None, settings: Set
 
     if status.last_finished_run_started is None or status.run_started > status.last_finished_run_started:
         if status.last_finished_run_started is not None:
-            events = collect_events(snapshot, status, status.last_finished_run_started, settings.owner_email, settings.allowlist)
+            events = collect_events(snapshot, status, status.last_finished_run_started, settings.owner_email)
         else:
             events = ()
         action = Action.GIVE_UP if status.attempts >= settings.max_attempts else Action.RETRY
         return Classification(action, events, status.last_finished_run_started)
 
-    events = collect_events(snapshot, status, status.last_finished_run_started, settings.owner_email, settings.allowlist)
+    events = collect_events(snapshot, status, status.last_finished_run_started, settings.owner_email)
     if events:
         return Classification(Action.RESUME, events, status.last_finished_run_started)
     return Classification(Action.SKIP, ())

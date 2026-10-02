@@ -491,7 +491,7 @@ def test_own_state_move_is_not_an_event():
     gw.tickets[501] = replace(gw.tickets[501], state="New")
     status = mark_run_started(gw, SETTINGS, 501, None, "New")
     snapshot = load_snapshot(gw, 501)
-    assert collect_events(snapshot, status, status.run_started, OWNER_EMAIL, ()) == ()
+    assert collect_events(snapshot, status, status.run_started, OWNER_EMAIL) == ()
 
 
 def _thread(thread_id, author, text, when):

@@ -152,7 +152,7 @@ def test_resume_runs_resume_with_events():
     assert len(calls) == 1
     assert calls[0][1] == "resume"
     events = json.loads(calls[0][5])["events"]
-    assert [(e["type"], e["comment"], e["allowlisted"]) for e in events] == [("ticket_comment", 2, False)]
+    assert [(e["type"], e["comment"]) for e in events] == [("ticket_comment", 2)]
 
 
 def test_retry_runs_resume():
@@ -228,18 +228,14 @@ def test_give_up_recorded_once():
     assert new_605_writes == []
 
 
-def test_clean_up_deletes_volume_for_closed_ticket(caplog):
+def test_closed_ticket_without_closed_pr_keeps_volume():
     gw = FakeGateway(FIXTURE_PATH, OWNER)
     fakes = Fakes(volumes={"603"})
     orch = _make_orch(gw, SETTINGS, fakes)
-
-    with caplog.at_level(logging.INFO, logger="fixie.orchestrator"):
-        concurrent.futures.wait(orch.poll_once())
+    concurrent.futures.wait(orch.poll_once())
     orch.shutdown()
-
-    assert fakes.delete_calls == ["603"]
+    assert fakes.delete_calls == []
     assert not any(c[0] == "603" for c in fakes.run_calls)
-    assert "orchestrator: ticket 603 volume deleted" in caplog.text
 
 
 def test_deleted_ticket_volume_deleted(caplog):
@@ -499,7 +495,7 @@ def test_closed_ticket_with_abandoned_pr_deletes_branch():
     assert "fixie/308" not in gw.branches
 
 
-def test_closed_ticket_with_active_pr_keeps_branch():
+def test_closed_ticket_with_active_pr_keeps_session():
     gw = _merged_ticket("s308", "s308")
     gw.tickets[308] = replace(gw.tickets[308], state="Closed")
     gw.pull_requests[38] = replace(gw.pull_requests[38], status="active")
@@ -507,5 +503,35 @@ def test_closed_ticket_with_active_pr_keeps_branch():
     orch = _make_orch(gw, SETTINGS, fakes)
     concurrent.futures.wait(orch.poll_once())
     orch.shutdown()
-    assert fakes.delete_calls == ["308"]
+    assert fakes.delete_calls == []
     assert "fixie/308" in gw.branches
+
+
+def test_merged_pr_ends_session_then_new_request_runs_fresh(caplog):
+    gw = _merged_ticket("s308", "s308")
+    gw.tickets = {308: replace(gw.tickets[308], state="Code Review")}
+    gw.comments[308].append(
+        Comment(id=99, text="<p>One more change please</p>", created_by=ALICE,
+                created_date=datetime(2026, 3, 2, tzinfo=UTC), modified_by=ALICE,
+                modified_date=datetime(2026, 3, 2, tzinfo=UTC))
+    )
+    fakes = Fakes(volumes={"308"})
+    orch = _make_orch(gw, replace(SETTINGS, allowlist=("alice@example.com",)), fakes)
+    with caplog.at_level(logging.INFO, logger="fixie.orchestrator"):
+        concurrent.futures.wait(orch.poll_once())
+    orch.shutdown()
+    assert fakes.delete_calls == ["308"]
+    assert "fixie/308" not in gw.branches
+    assert "ticket 308 PR 38 completed, session ended, volume deleted" in caplog.text
+    assert [c[0] for c in fakes.run_calls] == ["308"]
+
+
+def test_session_end_not_repeated_without_volume():
+    gw = _merged_ticket("s308", "s308")
+    gw.tickets[308] = replace(gw.tickets[308], state="Code Review")
+    fakes = Fakes(volumes=set())
+    orch = _make_orch(gw, SETTINGS, fakes)
+    concurrent.futures.wait(orch.poll_once())
+    orch.shutdown()
+    assert fakes.delete_calls == []
+    assert "delete_branch" not in [w[0] for w in gw.writes]

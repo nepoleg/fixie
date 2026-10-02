@@ -15,7 +15,6 @@ from fixie.model import (
 )
 
 OPEN_STATES = ("New", "Ready for Design", "Designing", "Ready for development", "Developing", "Code Review")
-CLOSED_STATES = ("Closed", "Removed")
 WORKING_STATE = "Developing"
 BEFORE_WORKING_STATES = OPEN_STATES[: OPEN_STATES.index(WORKING_STATE)]
 

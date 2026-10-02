@@ -136,7 +136,6 @@ class Event:
     author: Identity
     time: datetime
     content: str
-    allowlisted: bool
     pr: int | None = None
     thread: int | None = None
     comment: int | None = None
@@ -172,7 +171,6 @@ class Action(StrEnum):
     REBUILD = "rebuild"
     RETRY = "retry"
     GIVE_UP = "give_up"
-    CLEAN_UP = "clean_up"
     STOP = "stop"
 
 

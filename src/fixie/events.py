@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from fixie.allowlist import is_allowed, is_owner
+from fixie.allowlist import is_owner
 from fixie.gateway import OPEN_STATES, AdoGateway
 from fixie.model import Event, EventType, FixieStatus, Identity, TicketSnapshot
 from fixie.status_comment import is_bot_signed
@@ -53,7 +53,6 @@ def collect_events(
     status: FixieStatus | None,
     since: datetime | None,
     owner_email: str,
-    allowlist: tuple[str, ...],
 ) -> tuple[Event, ...]:
     """Return the snapshot's events since `since`, oldest first, excluding fixie's own actions."""
 
@@ -62,9 +61,6 @@ def collect_events(
 
     def fixie_comment(author: Identity, text: str) -> bool:
         return is_owner(author, owner_email) and is_bot_signed(text)
-
-    def allowlisted(author: Identity) -> bool:
-        return is_allowed(author, allowlist, owner_email)
 
     recorded_head = status.head if status is not None else None
     pr_id = snapshot.pull_request.id if snapshot.pull_request is not None else None
@@ -75,7 +71,7 @@ def collect_events(
         if in_window(comment.created_date) and not fixie_comment(author, comment.text):
             events.append(
                 Event(
-                    EventType.TICKET_COMMENT, author, comment.created_date, comment.text, allowlisted(author),
+                    EventType.TICKET_COMMENT, author, comment.created_date, comment.text,
                     comment=comment.id,
                 )
             )
@@ -99,7 +95,6 @@ def collect_events(
                     pr_comment.author,
                     pr_comment.published_date,
                     content,
-                    allowlisted(pr_comment.author),
                     pr=pr_id,
                     thread=thread.id,
                     comment=pr_comment.id,
@@ -110,7 +105,7 @@ def collect_events(
     if head is not None and head.sha != recorded_head and (recorded_head is not None or in_window(head.date)):
         events.append(
             Event(
-                EventType.PR_PUSH, head.author, head.date, f"{head.sha} {head.message}", allowlisted(head.author),
+                EventType.PR_PUSH, head.author, head.date, f"{head.sha} {head.message}",
                 pr=pr_id,
             )
         )
@@ -128,7 +123,6 @@ def collect_events(
                 build.requested_for,
                 build.finish_time,
                 f"Build {build.id} failed on {build.source_version}",
-                allowlisted(build.requested_for),
                 pr=pr_id,
                 build=build.id,
             )
@@ -151,6 +145,6 @@ def collect_events(
         else:
             event_type = EventType.STATE_CHANGE
         content = f"{update.state_from or '-'} -> {update.state_to}"
-        events.append(Event(event_type, update.revised_by, update.revised_date, content, allowlisted(update.revised_by)))
+        events.append(Event(event_type, update.revised_by, update.revised_date, content))
 
     return tuple(sorted(events, key=lambda e: e.time))

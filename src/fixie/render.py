@@ -56,7 +56,7 @@ def _field(snapshot: TicketSnapshot, name: str) -> dict[str, str] | None:
 
 
 def _event(e: Event) -> dict:
-    item = {"type": e.type.value, "time": _iso(e.time), "author": _who(e.author), "allowlisted": e.allowlisted}
+    item = {"type": e.type.value, "time": _iso(e.time), "author": _who(e.author)}
     for key in ("pr", "thread", "comment", "build"):
         value = getattr(e, key)
         if value is not None:

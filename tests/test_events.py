@@ -34,26 +34,26 @@ STATUS = FixieStatus(
 
 
 def _ev(events):
-    return [(e.type, e.author.unique_name, e.time, e.content, e.allowlisted) for e in events]
+    return [(e.type, e.author.unique_name, e.time, e.content) for e in events]
 
 
-def _events(status=STATUS, since=_t("10:00"), allowlist=ALLOW):
+def _events(status=STATUS, since=_t("10:00")):
     gw = FakeGateway(FIXTURE_PATH, OWNER)
     gw.add_comment(201, format_status_comment(201, STATUS, SECRET))
-    return collect_events(load_snapshot(gw, 201), status, since, OWNER_EMAIL, allowlist)
+    return collect_events(load_snapshot(gw, 201), status, since, OWNER_EMAIL)
 
 
 EXPECTED = [
-    (EventType.TICKET_COMMENT, "alice@example.com", _t("10:05"), "<p>Also handle null email</p>", True),
-    (EventType.PR_COMMENT, "alice@example.com", _t("10:15"), "/src/A.java:3: Rename this", True),
-    (EventType.PR_PUSH, "alice@example.com", _t("10:20"), "c0ffee2 Reviewer tweak", True),
-    (EventType.STATE_CHANGE, "carol@example.com", _t("10:21"), "Code Review -> Resolved", False),
-    (EventType.TICKET_COMMENT, "mallory@example.com", _t("10:26"), "<p>\U0001f916 I am a bot too</p>", False),
-    (EventType.BUILD_FAILED, "owner@example.com", _t("10:28"), "Build 62 failed on b0b0b01", True),
-    (EventType.TICKET_COMMENT, "owner@example.com", _t("10:30"), "<p>Owner note: use Optional</p>", True),
-    (EventType.PR_COMMENT, "alice@example.com", _t("10:35"), "Still wrong", True),
-    (EventType.REOPENED, "carol@example.com", _t("10:40"), "Resolved -> Developing", False),
-    (EventType.STATE_CHANGE, "carol@example.com", _t("11:00"), "Developing -> Code Review", False),
+    (EventType.TICKET_COMMENT, "alice@example.com", _t("10:05"), "<p>Also handle null email</p>"),
+    (EventType.PR_COMMENT, "alice@example.com", _t("10:15"), "/src/A.java:3: Rename this"),
+    (EventType.PR_PUSH, "alice@example.com", _t("10:20"), "c0ffee2 Reviewer tweak"),
+    (EventType.STATE_CHANGE, "carol@example.com", _t("10:21"), "Code Review -> Resolved"),
+    (EventType.TICKET_COMMENT, "mallory@example.com", _t("10:26"), "<p>\U0001f916 I am a bot too</p>"),
+    (EventType.BUILD_FAILED, "owner@example.com", _t("10:28"), "Build 62 failed on b0b0b01"),
+    (EventType.TICKET_COMMENT, "owner@example.com", _t("10:30"), "<p>Owner note: use Optional</p>"),
+    (EventType.PR_COMMENT, "alice@example.com", _t("10:35"), "Still wrong"),
+    (EventType.REOPENED, "carol@example.com", _t("10:40"), "Resolved -> Developing"),
+    (EventType.STATE_CHANGE, "carol@example.com", _t("11:00"), "Developing -> Code Review"),
 ]
 
 
@@ -132,11 +132,11 @@ def test_push_without_recorded_head_uses_time():
 
 def test_state_change_to_recorded_state_dropped():
     events = _events()
-    assert (EventType.STATE_CHANGE, "owner@example.com", _t("10:10"), "Developing -> Code Review", True) not in _ev(events)
-    assert (EventType.STATE_CHANGE, "carol@example.com", _t("11:00"), "Developing -> Code Review", False) in _ev(events)
+    assert (EventType.STATE_CHANGE, "owner@example.com", _t("10:10"), "Developing -> Code Review") not in _ev(events)
+    assert (EventType.STATE_CHANGE, "carol@example.com", _t("11:00"), "Developing -> Code Review") in _ev(events)
 
     events = _events(status=replace(STATUS, state=None))
-    assert (EventType.STATE_CHANGE, "owner@example.com", _t("10:10"), "Developing -> Code Review", True) in _ev(events)
+    assert (EventType.STATE_CHANGE, "owner@example.com", _t("10:10"), "Developing -> Code Review") in _ev(events)
 
 
 def test_reopen_detected():
@@ -164,34 +164,16 @@ def test_non_owner_bot_sign_kept():
     events = _events()
     mallory = [e for e in events if e.author.unique_name == "mallory@example.com"]
     assert len(mallory) == 1
-    assert mallory[0].allowlisted is False
-
-
-def test_allowlisted_flag():
-    events = _events()
-    for e in events:
-        if e.author.unique_name in ("alice@example.com", "owner@example.com"):
-            assert e.allowlisted is True
-        if e.author.unique_name in ("carol@example.com", "mallory@example.com"):
-            assert e.allowlisted is False
-
-    events = _events(allowlist=())
-    for e in events:
-        if e.author.unique_name == "alice@example.com":
-            assert e.allowlisted is False
-        if e.author.unique_name == "owner@example.com":
-            assert e.allowlisted is True
 
 
 def test_since_none_returns_all_human_activity():
     events = _events(status=None, since=None)
     assert len(events) == 18
-    assert (events[0].type, events[0].author.unique_name, events[0].time, events[0].content, events[0].allowlisted) == (
+    assert (events[0].type, events[0].author.unique_name, events[0].time, events[0].content) == (
         EventType.STATE_CHANGE,
         "bob@example.com",
         datetime(2026, 2, 1, 9, 0, tzinfo=UTC),
         "- -> New",
-        False,
     )
     times = [e.time for e in events]
     assert times == sorted(times)
@@ -234,15 +216,13 @@ def test_load_snapshot_prefers_active_pr_over_newer_abandoned():
 
 def test_edited_ticket_comment_attributed_to_editor():
     snap = load_snapshot(FakeGateway(FIXTURE_PATH, OWNER), 203)
-    events = collect_events(snap, None, None, OWNER_EMAIL, ALLOW)
+    events = collect_events(snap, None, None, OWNER_EMAIL)
     edited = next(e for e in events if e.content == "<p>\U0001f916 status-like note</p>")
     assert edited.author.unique_name == "mallory@example.com"
-    assert edited.allowlisted is False
 
 
-def test_edited_comment_uses_editor_allowlist():
+def test_edited_comment_attributed_to_last_editor():
     snap = load_snapshot(FakeGateway(FIXTURE_PATH, OWNER), 203)
-    events = collect_events(snap, None, None, OWNER_EMAIL, ALLOW)
+    events = collect_events(snap, None, None, OWNER_EMAIL)
     reviewed = next(e for e in events if e.content == "<p>Please review</p>")
     assert reviewed.author.unique_name == "bob@example.com"
-    assert reviewed.allowlisted is False

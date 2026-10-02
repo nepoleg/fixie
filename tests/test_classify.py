@@ -25,7 +25,7 @@ def _t(hm):
 
 
 def _ev(events):
-    return [(e.type, e.author.unique_name, e.time, e.content, e.allowlisted) for e in events]
+    return [(e.type, e.author.unique_name, e.time, e.content) for e in events]
 
 
 SETTINGS = Settings(
@@ -85,19 +85,19 @@ def test_skip_needs_info_without_reply():
 def test_resume_on_new_events():
     r = _classify(303, replace(FINISHED, pr_id=31, head="s303"))
     assert r.action == Action.RESUME
-    assert _ev(r.events) == [(EventType.PR_COMMENT, "alice@example.com", _t("11:00"), "Please rename", True)]
+    assert _ev(r.events) == [(EventType.PR_COMMENT, "alice@example.com", _t("11:00"), "Please rename")]
 
 
 def test_rebuild_from_pr_and_summary():
     r = _classify(304)
     assert r.action == Action.REBUILD
-    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "alice@example.com", _t("11:00"), "<p>After summary</p>", True)]
+    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "alice@example.com", _t("11:00"), "<p>After summary</p>")]
 
 
 def test_rebuild_from_branch_only():
     r = _classify(306)
     assert r.action == Action.REBUILD
-    assert _ev(r.events) == [(EventType.PR_PUSH, "owner@example.com", _t("10:20"), "s306 WIP", True)]
+    assert _ev(r.events) == [(EventType.PR_PUSH, "owner@example.com", _t("10:20"), "s306 WIP")]
 
 
 def test_rebuild_untrusted_status():
@@ -107,19 +107,19 @@ def test_rebuild_untrusted_status():
     assert trusted_status(c, 305, OWNER_EMAIL, SECRET) is None
     r = _classify(305)
     assert r.action == Action.REBUILD
-    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "bob@example.com", _t("10:00"), "<p>\U0001f916 fixie status</p>", False)]
+    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "bob@example.com", _t("10:00"), "<p>\U0001f916 fixie status</p>")]
 
 
 def test_retry_unfinished_run():
     r = _classify(307, replace(FINISHED, run_started=_t("11:00"), attempts=1))
     assert r.action == Action.RETRY
-    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "alice@example.com", _t("10:15"), "<p>During crashed run</p>", True)]
+    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "alice@example.com", _t("10:15"), "<p>During crashed run</p>")]
 
 
 def test_give_up_after_max_attempts():
     r = _classify(307, replace(FINISHED, run_started=_t("11:00"), attempts=3))
     assert r.action == Action.GIVE_UP
-    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "alice@example.com", _t("10:15"), "<p>During crashed run</p>", True)]
+    assert _ev(r.events) == [(EventType.TICKET_COMMENT, "alice@example.com", _t("10:15"), "<p>During crashed run</p>")]
 
 
 def test_retry_limit_from_settings():
@@ -134,19 +134,9 @@ def test_first_run_crash_retry_has_no_events():
     assert _classify(307, FixieStatus(run_started=_t("11:00"), attempts=1)) == Classification(Action.RETRY, ())
 
 
-def test_clean_up_closed_and_merged():
-    assert _classify(308, replace(FINISHED, pr_id=38)) == Classification(Action.CLEAN_UP, ())
-    assert _classify(308).action == Action.CLEAN_UP
-
-
-def test_closed_or_removed_cleaned_up_even_with_active_pr():
-    assert _classify(309, replace(FINISHED, pr_id=39)) == Classification(Action.CLEAN_UP, ())
-    assert _classify(309, replace(FINISHED, pr_id=39), state="Removed").action == Action.CLEAN_UP
-
-
-@pytest.mark.parametrize("state", ["Ready for testing", "Testing", "Ready for Release"])
-def test_testing_states_clean_up_only_after_merge(state):
-    assert _classify(308, replace(FINISHED, pr_id=38), state=state) == Classification(Action.CLEAN_UP, ())
+@pytest.mark.parametrize("state", ["Closed", "Removed", "Ready for testing", "Testing", "Ready for Release"])
+def test_non_open_states_wait_whatever_the_pr(state):
+    assert _classify(308, replace(FINISHED, pr_id=38), state=state) == Classification(Action.SKIP, ())
     assert _classify(309, replace(FINISHED, pr_id=39), state=state) == Classification(Action.SKIP, ())
 
 

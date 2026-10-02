@@ -46,7 +46,7 @@ TEST_CMD = "cd ~/work && rm -rf /tmp/b && javac -d /tmp/b *.java && java -cp /tm
 FIX = "`Calc.add(2, 3)` returns `-1`, it should return `5`. Fix it and keep `CalcTest` passing."
 MULTIPLY = FIX + "\n\nReopened: also add `static int multiply(int a, int b)` and a check for it in `CalcTest`."
 REOPEN = [{"type": "reopened", "time": "2026-09-30T10:00:00Z", "author": "owner@example.com",
-           "allowlisted": True, "detail": "Ready for testing -> Developing"}]
+           "detail": "Ready for testing -> Developing"}]
 
 
 @pytest.fixture(scope="module")

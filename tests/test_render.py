@@ -101,11 +101,11 @@ def test_resumed_ticket_events_are_pointers(tmp_path):
     assert m["pull_request"] == {"id": 42, "status": "active"}
     assert m["events"] == [
         {"type": "pr_comment", "time": "2026-03-01T10:30:00Z", "author": "alice@example.com",
-         "allowlisted": True, "pr": 42, "thread": 1, "comment": 1},
+         "pr": 42, "thread": 1, "comment": 1},
         {"type": "ticket_comment", "time": "2026-03-01T10:40:00Z", "author": "carol@example.com",
-         "allowlisted": False, "comment": 4023},
+         "comment": 4023},
         {"type": "pr_comment", "time": "2026-03-01T10:45:00Z", "author": "alice@example.com",
-         "allowlisted": True, "pr": 42, "thread": 1, "comment": 3},
+         "pr": 42, "thread": 1, "comment": 3},
     ]
 
 

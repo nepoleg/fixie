@@ -80,13 +80,16 @@ class Orchestrator:
         self.gateway.remove_tag(tid, tag)
         self.gateway.add_comment(tid, _unauthorized_text(tag))
 
-    def _delete_fixie_branch(self, snapshot, status) -> None:
-        pr, head = snapshot.pull_request, snapshot.head
-        if (pr is not None and pr.status == "active") or head is None or status is None or head.sha != status.head:
-            return
-        branch = f"fixie/{snapshot.ticket.id}"
-        if self.gateway.delete_branch(branch, head.sha):
-            logger.info(f"orchestrator: ticket {snapshot.ticket.id} branch {branch} deleted")
+    def _end_session(self, snapshot, status) -> None:
+        tid, pr, head = snapshot.ticket.id, snapshot.pull_request, snapshot.head
+        branch = f"fixie/{tid}"
+        if head is not None:
+            if status is not None and head.sha == status.head and self.gateway.delete_branch(branch, head.sha):
+                logger.info(f"orchestrator: ticket {tid} branch {branch} deleted")
+            else:
+                logger.warning(f"orchestrator: ticket {tid} branch {branch} has commits not pushed by fixie, kept")
+        self._delete_volume(str(tid))
+        logger.info(f"orchestrator: ticket {tid} PR {pr.id} {pr.status}, session ended, volume deleted")
 
     def _submit(self, tid: int, snapshot, status, classification) -> Future | None:
         with self._lock:
@@ -105,9 +108,8 @@ class Orchestrator:
         """Classify every candidate ticket and hand eligible ones to workers; returns the submitted futures."""
         gw, s = self.gateway, self.settings
         tagged = gw.find_tagged_tickets(s.ticket_tag)
-        ids = tagged + sorted(
-            {int(t) for t in self._ticket_volumes() if t.isascii() and t.isdigit()} - set(tagged)
-        )
+        volumes = {int(t) for t in self._ticket_volumes() if t.isascii() and t.isdigit()}
+        ids = tagged + sorted(volumes - set(tagged))
         futures: list[Future] = []
         for tid in ids:
             try:
@@ -128,6 +130,9 @@ class Orchestrator:
                 status = trusted_status(
                     find_status_comment(snapshot.comments, s.owner_email), tid, s.owner_email, s.state_secret
                 )
+                pr = snapshot.pull_request
+                if tid in volumes and pr is not None and pr.status in ("completed", "abandoned"):
+                    self._end_session(snapshot, status)
                 classification = classify(snapshot, status, s)
                 logger.info(f"orchestrator: ticket {tid} classified {classification.action}")
                 action = classification.action
@@ -146,10 +151,6 @@ class Orchestrator:
                 elif action == Action.GIVE_UP:
                     if status.result != RunStatus.GAVE_UP:
                         publisher.record_give_up(gw, s, tid, status)
-                elif action == Action.CLEAN_UP:
-                    self._delete_fixie_branch(snapshot, status)
-                    self._delete_volume(str(tid))
-                    logger.info(f"orchestrator: ticket {tid} volume deleted")
             except Exception as exc:
                 logger.warning(f"orchestrator: ticket {tid} poll failed: {type(exc).__name__}: {exc}")
         return futures
