@@ -2,7 +2,7 @@
 
 from fixie.allowlist import is_owner
 from fixie.events import collect_events
-from fixie.gateway import OPEN_STATES
+from fixie.gateway import CLOSED_STATES, OPEN_STATES
 from fixie.model import Action, Classification, FixieStatus, TicketSnapshot
 from fixie.settings import Settings
 from fixie.status_comment import is_bot_signed, is_status_text
@@ -12,10 +12,11 @@ def classify(snapshot: TicketSnapshot, status: FixieStatus | None, settings: Set
     """Classify a ticket into one orchestrator action, from its snapshot and trusted status."""
     ticket = snapshot.ticket
 
-    if ticket.state not in OPEN_STATES:
-        if snapshot.pull_request is not None and snapshot.pull_request.status == "active":
-            return Classification(Action.SKIP, ())
+    if ticket.state in CLOSED_STATES:
         return Classification(Action.CLEAN_UP, ())
+    if ticket.state not in OPEN_STATES:
+        merged = snapshot.pull_request is not None and snapshot.pull_request.status == "completed"
+        return Classification(Action.CLEAN_UP if merged else Action.SKIP, ())
 
     tag = settings.ticket_tag.strip().lower()
     if not any(t.strip().lower() == tag for t in ticket.tags):

@@ -15,6 +15,7 @@ from fixie.model import (
 )
 
 OPEN_STATES = ("New", "Ready for Design", "Designing", "Ready for development", "Developing", "Code Review")
+CLOSED_STATES = ("Closed", "Removed")
 WORKING_STATE = "Developing"
 BEFORE_WORKING_STATES = OPEN_STATES[: OPEN_STATES.index(WORKING_STATE)]
 
@@ -92,6 +93,10 @@ class AdoGateway(ABC):
     @abstractmethod
     def set_thread_status(self, pr_id: int, thread_id: int, status: str) -> None:
         """Set a pull request thread's status (e.g. "fixed"); raises KeyError if unknown."""
+
+    @abstractmethod
+    def delete_branch(self, branch: str, expected_sha: str) -> bool:
+        """Delete branch only if its head is expected_sha; returns whether it was deleted."""
 
     @abstractmethod
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:

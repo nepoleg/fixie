@@ -453,3 +453,59 @@ def test_run_forever_survives_poll_error(caplog, monkeypatch):
 
     assert "orchestrator: poll failed: RuntimeError: down" in caplog.text
     assert len(calls) == 2
+
+
+def _merged_ticket(branch_sha, recorded_head):
+    from fixie.model import Commit
+
+    gw = FakeGateway(Path(__file__).parent / "fixtures" / "ado" / "classify.json", OWNER)
+    gw.tickets[308] = replace(gw.tickets[308], state="Ready for testing")
+    gw.branches["fixie/308"] = Commit(branch_sha, OWNER, T1, "Fix")
+    status = FixieStatus(run_started=T1, last_finished_run_started=T1, result=RunStatus.DONE, pr_id=38, head=recorded_head)
+    gw.add_comment(308, format_status_comment(308, status, SECRET))
+    return gw
+
+
+def test_merged_pr_cleanup_deletes_fixie_branch():
+    gw = _merged_ticket("s308", "s308")
+    fakes = Fakes(volumes={"308"})
+    orch = _make_orch(gw, SETTINGS, fakes)
+    concurrent.futures.wait(orch.poll_once())
+    orch.shutdown()
+    assert fakes.delete_calls == ["308"]
+    assert ("delete_branch", {"branch": "fixie/308", "expected_sha": "s308"}) in gw.writes
+    assert "fixie/308" not in gw.branches
+
+
+def test_merged_pr_cleanup_keeps_branch_with_foreign_commits():
+    gw = _merged_ticket("human1", "s308")
+    fakes = Fakes(volumes={"308"})
+    orch = _make_orch(gw, SETTINGS, fakes)
+    concurrent.futures.wait(orch.poll_once())
+    orch.shutdown()
+    assert fakes.delete_calls == ["308"]
+    assert "delete_branch" not in [w[0] for w in gw.writes]
+    assert "fixie/308" in gw.branches
+
+
+def test_closed_ticket_with_abandoned_pr_deletes_branch():
+    gw = _merged_ticket("s308", "s308")
+    gw.tickets[308] = replace(gw.tickets[308], state="Removed")
+    gw.pull_requests[38] = replace(gw.pull_requests[38], status="abandoned")
+    fakes = Fakes(volumes={"308"})
+    orch = _make_orch(gw, SETTINGS, fakes)
+    concurrent.futures.wait(orch.poll_once())
+    orch.shutdown()
+    assert "fixie/308" not in gw.branches
+
+
+def test_closed_ticket_with_active_pr_keeps_branch():
+    gw = _merged_ticket("s308", "s308")
+    gw.tickets[308] = replace(gw.tickets[308], state="Closed")
+    gw.pull_requests[38] = replace(gw.pull_requests[38], status="active")
+    fakes = Fakes(volumes={"308"})
+    orch = _make_orch(gw, SETTINGS, fakes)
+    concurrent.futures.wait(orch.poll_once())
+    orch.shutdown()
+    assert fakes.delete_calls == ["308"]
+    assert "fixie/308" in gw.branches

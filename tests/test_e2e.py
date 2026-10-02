@@ -135,10 +135,10 @@ def test_orchestrator_end_to_end(monkeypatch, helper_image, origin, mirror_volum
         sync()
 
         t = gw._tick()
-        gw.tickets[601] = replace(gw.tickets[601], state="Closed")
+        gw.tickets[601] = replace(gw.tickets[601], state="Testing")
         gw.updates[601].append(
             TicketUpdate(
-                id=10, revised_by=QA, revised_date=t, tags_added=(), tags_removed=(), state_from="Developing", state_to="Closed"
+                id=10, revised_by=QA, revised_date=t, tags_added=(), tags_removed=(), state_from="Developing", state_to="Testing"
             )
         )
         assert poll() == []
@@ -148,7 +148,7 @@ def test_orchestrator_end_to_end(monkeypatch, helper_image, origin, mirror_volum
         gw.tickets[601] = replace(gw.tickets[601], state="Developing")
         gw.updates[601].append(
             TicketUpdate(
-                id=11, revised_by=QA, revised_date=t, tags_added=(), tags_removed=(), state_from="Closed", state_to="Developing"
+                id=11, revised_by=QA, revised_date=t, tags_added=(), tags_removed=(), state_from="Testing", state_to="Developing"
             )
         )
         assert len(poll()) == 1

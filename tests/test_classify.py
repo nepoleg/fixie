@@ -2,6 +2,8 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from fixie.classify import classify
 from fixie.events import load_snapshot
 from fixie.fake_gateway import FakeGateway
@@ -60,8 +62,10 @@ def _trusted(snap):
     return trusted_status(find_status_comment(list(snap.comments), OWNER_EMAIL), snap.ticket.id, OWNER_EMAIL, SECRET)
 
 
-def _classify(ticket_id, status=None, settings=SETTINGS):
+def _classify(ticket_id, status=None, settings=SETTINGS, state=None):
     gw, snap = _snapshot(ticket_id, status)
+    if state is not None:
+        snap = replace(snap, ticket=replace(snap.ticket, state=state))
     return classify(snap, _trusted(snap), settings)
 
 
@@ -135,8 +139,15 @@ def test_clean_up_closed_and_merged():
     assert _classify(308).action == Action.CLEAN_UP
 
 
-def test_closed_with_active_pr_skipped():
-    assert _classify(309, replace(FINISHED, pr_id=39)) == Classification(Action.SKIP, ())
+def test_closed_or_removed_cleaned_up_even_with_active_pr():
+    assert _classify(309, replace(FINISHED, pr_id=39)) == Classification(Action.CLEAN_UP, ())
+    assert _classify(309, replace(FINISHED, pr_id=39), state="Removed").action == Action.CLEAN_UP
+
+
+@pytest.mark.parametrize("state", ["Ready for testing", "Testing", "Ready for Release"])
+def test_testing_states_clean_up_only_after_merge(state):
+    assert _classify(308, replace(FINISHED, pr_id=38), state=state) == Classification(Action.CLEAN_UP, ())
+    assert _classify(309, replace(FINISHED, pr_id=39), state=state) == Classification(Action.SKIP, ())
 
 
 def test_stop_tag_removed():

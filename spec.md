@@ -159,7 +159,8 @@ Ticket execution is implemented using Claude Code running in a sandbox.
      - No new events, including "needs info" with no human reply: skip.
      - New events (comments, PR threads, reviewer pushes, failed build, reopened): resume the session with the events in `ticket.json`.
      - Status comment missing or untrusted, but fixie's PR, branch or comments exist: rebuild the state, start a fresh session with the full history, and put everything since fixie's last summary into the events in `ticket.json`.
-     - Ticket closed and PR merged: delete the volume, no run.
+     - Ticket Closed or Removed, or deleted in ADO: delete the volume, no run. If no active PR uses `fixie/<id>` (merged, abandoned or none) and its head is still the commit fixie pushed, also delete that branch.
+     - Ticket in Ready for testing, Testing or Ready for Release: wait while the PR is not merged (keep the volume, so a QA reopen resumes the same session). Once the PR is merged, delete the volume and the remote `fixie/<id>` branch, if its head is still the commit fixie pushed. A later reopen then starts fresh from the base branch, which holds the merged work, and opens a new PR.
      - Tag removed: stop working on the ticket and keep the volume.
   5. For tickets with work, hand the ticket to a worker. Tickets that don't fit in the pool wait for the next poll.
 - Each eligible ticket is handed to a worker from a thread pool. The pool size is the maximum number of parallel tickets (`max_parallel`, default 2); the poll interval is `poll_interval_s` (default 300). Both are in `config.toml` `[orchestrator]`.

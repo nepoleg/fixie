@@ -57,6 +57,10 @@ class DryRunGateway(AdoGateway):
     def set_thread_status(self, pr_id: int, thread_id: int, status: str) -> None:
         self._log("set_thread_status", pr_id=pr_id, thread_id=thread_id, status=status)
 
+    def delete_branch(self, branch: str, expected_sha: str) -> bool:
+        self._log("delete_branch", branch=branch, expected_sha=expected_sha)
+        return True
+
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         return self._comment(comment_id, text, self._log("edit_comment", ticket_id=ticket_id, comment_id=comment_id, text=text))
 

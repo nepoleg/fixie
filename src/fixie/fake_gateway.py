@@ -312,6 +312,15 @@ class FakeGateway(AdoGateway):
                     return
             raise KeyError(thread_id)
 
+    def delete_branch(self, branch: str, expected_sha: str) -> bool:
+        with self._lock:
+            head = self.branches.get(branch)
+            if head is None or head.sha != expected_sha:
+                return False
+            del self.branches[branch]
+            self._record("delete_branch", {"branch": branch, "expected_sha": expected_sha})
+            return True
+
     def edit_comment(self, ticket_id: int, comment_id: int, text: str) -> Comment:
         with self._lock:
             if ticket_id not in self.tickets:

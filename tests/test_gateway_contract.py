@@ -29,6 +29,7 @@ GATEWAY_METHODS = (
     "set_state",
     "reply_to_thread",
     "set_thread_status",
+    "delete_branch",
     "edit_comment",
     "create_pull_request",
     "update_pull_request",

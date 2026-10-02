@@ -80,6 +80,14 @@ class Orchestrator:
         self.gateway.remove_tag(tid, tag)
         self.gateway.add_comment(tid, _unauthorized_text(tag))
 
+    def _delete_fixie_branch(self, snapshot, status) -> None:
+        pr, head = snapshot.pull_request, snapshot.head
+        if (pr is not None and pr.status == "active") or head is None or status is None or head.sha != status.head:
+            return
+        branch = f"fixie/{snapshot.ticket.id}"
+        if self.gateway.delete_branch(branch, head.sha):
+            logger.info(f"orchestrator: ticket {snapshot.ticket.id} branch {branch} deleted")
+
     def _submit(self, tid: int, snapshot, status, classification) -> Future | None:
         with self._lock:
             if len(self._in_flight) >= self.settings.max_parallel:
@@ -139,6 +147,7 @@ class Orchestrator:
                     if status.result != RunStatus.GAVE_UP:
                         publisher.record_give_up(gw, s, tid, status)
                 elif action == Action.CLEAN_UP:
+                    self._delete_fixie_branch(snapshot, status)
                     self._delete_volume(str(tid))
                     logger.info(f"orchestrator: ticket {tid} volume deleted")
             except Exception as exc:
