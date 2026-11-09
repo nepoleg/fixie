@@ -77,7 +77,7 @@ def load_settings(config_path: Path, env_path: Path) -> Settings:
         raise SettingsError(f"helper_timeout_s must be at least 1, got {helper_timeout_s}")
 
     return Settings(
-        ado_org_url=ado["org_url"],
+        ado_org_url=_clean(env.get("ADO_ORG_URL")) or ado["org_url"],
         ado_project=ado["project"],
         ado_repo=ado["repo"],
         ticket_tag=ado["ticket_tag"],

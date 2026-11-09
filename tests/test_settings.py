@@ -74,6 +74,14 @@ def test_optional_tokens_loaded(tmp_path):
     assert settings.ado_feed_token == "t3"
 
 
+def test_org_url_from_env_overrides_config(tmp_path):
+    base = ["FIXIE_STATE_SECRET=s", "FIXIE_OWNER_EMAIL=owner@example.com"]
+    assert load_settings(CONFIG_PATH, _write_env(tmp_path, base)).ado_org_url == "https://dev.azure.com/<your-org>"
+
+    env_path = _write_env(tmp_path, base + ["ADO_ORG_URL=https://dev.azure.com/acme"])
+    assert load_settings(CONFIG_PATH, env_path).ado_org_url == "https://dev.azure.com/acme"
+
+
 def test_secrets_not_in_repr(tmp_path):
     env_path = _write_env(
         tmp_path,
